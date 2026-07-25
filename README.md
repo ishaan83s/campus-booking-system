@@ -1,2 +1,43 @@
-# campus faculty slot booking system
-Internal College Office Hours Booking System that is built using Spring Boot following a clean architecture, REST APIs, Git workflow, and collaborative software engineering practices.
+# Campus Booking System
+
+Internal College Office Hours Booking System built using Spring Boot following Clean Architecture principles.
+
+## Features
+
+- Student Booking
+- Professor Dashboard
+- Authentication
+- Waitlist
+- Conflict Resolution
+
+## Tech Stack
+
+Backend
+- Java
+- Spring Boot
+- Spring Data JPA
+- Hibernate
+- MySQL
+
+Frontend
+- HTML
+- CSS
+- Bootstrap
+- JavaScript
+
+## Repository Structure
+
+backend/
+frontend/
+docs/
+postman/
+
+## Team
+
+| Member | Module |
+|---------|-------|
+|  |       |
+
+## License
+
+MIT
