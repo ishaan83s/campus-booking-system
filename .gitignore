@@ -1,7 +1,17 @@
-.DS_Store
 # Compiled class file
 *.class
 
+# IntelliJ
+.idea/
+
+# Build output
+target/
+
+# Maven wrapper jar (keep the wrapper scripts, ignore the downloaded jar if desired)
+.mvn/wrapper/maven-wrapper.jar
+
+# OS files
+.DS_Store
 # Log file
 *.log
 
