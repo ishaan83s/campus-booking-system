@@ -4,23 +4,23 @@ import backend.common.entity.BaseEntity;
 import backend.common.entity.User;
 import backend.common.enums.BookingStatus;
 import backend.professor.model.Slot;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * Maps to the `bookings` table (Backend Development Bible, Section 2.3).
+ * Owned exclusively by booking/ (Section 9 - Entity Ownership Matrix).
+ * Only ever represents a CONFIRMED reservation - a student on a full slot's
+ * queue gets a row in waitlist_entries instead (Section 2.1).
+ * No physical DELETE in the happy path - status flips to CANCELLED/COMPLETED
+ * so booking history is preserved.
+ */
 @Entity
 @Table(name = "bookings")
 @Getter
@@ -28,19 +28,30 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@EqualsAndHashCode(callSuper = true)
 public class Booking extends BaseEntity {
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    /**
+     * FK -> users.id (the student who made the booking).
+     * Read-only reference - booking/ never writes to the User row itself,
+     * per Section 8.1 (Auth Module ownership rules).
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    /**
+     * FK -> slots.id.
+     * booking/ only ever reads Slot via SlotRepository.findByIdForUpdate()
+     * and mutates booked_count/status through SlotService, never directly
+     * (Section 8.2 / Section 16 - Integration Rules).
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "slot_id", nullable = false)
     private Slot slot;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "status", nullable = false)
+    @Builder.Default
     private BookingStatus status = BookingStatus.BOOKED;
 
     @Column(name = "booked_at", nullable = false)
