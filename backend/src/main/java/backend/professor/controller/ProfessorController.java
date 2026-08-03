@@ -1,6 +1,6 @@
 package backend.professor.controller;
 
-import backend.common.entity.User;
+import backend.security.UserPrincipal;
 import backend.common.enums.Role;
 import backend.professor.dto.ProfessorResponse;
 import backend.professor.dto.SlotBookingsResponse;
@@ -86,14 +86,14 @@ public class ProfessorController {
 
     @PreAuthorize("hasRole('PROFESSOR')")
     @GetMapping("/professors/slots/me")
-    public ResponseEntity<List<SlotResponse>> getMySlots(@AuthenticationPrincipal User professor) {
+    public ResponseEntity<List<SlotResponse>> getMySlots(@AuthenticationPrincipal UserPrincipal professor) {
         return ResponseEntity.ok(slotService.getSlotsForProfessor(professor.getId()));
     }
 
     @PreAuthorize("hasRole('PROFESSOR')")
     @PostMapping("/professors/slots")
     public ResponseEntity<SlotResponse> createSlot(
-            @AuthenticationPrincipal User professor,
+            @AuthenticationPrincipal UserPrincipal professor,
             @Valid @RequestBody SlotRequest request) {
         SlotResponse response = slotService.createSlot(professor.getId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -102,7 +102,7 @@ public class ProfessorController {
     @PreAuthorize("hasRole('PROFESSOR')")
     @PutMapping("/professors/slots/{slotId}")
     public ResponseEntity<SlotResponse> updateSlot(
-            @AuthenticationPrincipal User professor,
+            @AuthenticationPrincipal UserPrincipal professor,
             @PathVariable Long slotId,
             @Valid @RequestBody SlotRequest request) {
         SlotResponse response = slotService.updateSlot(professor.getId(), slotId, request);
@@ -112,7 +112,7 @@ public class ProfessorController {
     @PreAuthorize("hasRole('PROFESSOR')")
     @DeleteMapping("/professors/slots/{slotId}")
     public ResponseEntity<Void> cancelSlot(
-            @AuthenticationPrincipal User professor,
+            @AuthenticationPrincipal UserPrincipal professor,
             @PathVariable Long slotId) {
         slotService.cancelSlot(professor.getId(), slotId);
         return ResponseEntity.noContent().build();
@@ -121,7 +121,7 @@ public class ProfessorController {
     @PreAuthorize("hasAnyRole('PROFESSOR', 'ADMIN')")
     @GetMapping("/professors/slots/{slotId}/bookings")
     public ResponseEntity<SlotBookingsResponse> getBookingsForSlot(
-            @AuthenticationPrincipal User requester,
+            @AuthenticationPrincipal UserPrincipal requester,
             @PathVariable Long slotId) {
         SlotBookingsResponse response = requester.getRole() == Role.ADMIN
                 ? slotService.getBookingsForSlotAsAdmin(slotId)

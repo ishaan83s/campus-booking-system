@@ -7,21 +7,21 @@ import jakarta.persistence.*;
 @Table(name = "users")
 public class User extends BaseEntity {
 
-    @Column(nullable = false)
+    @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "password_hash", nullable = false, length = 255)
     private String password;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     private Role role;
 
     @Column(nullable = false)
-    private boolean isActive = true;
+    private boolean active = true;
 
     public User() {
     }
@@ -59,10 +59,10 @@ public class User extends BaseEntity {
     }
 
     public boolean isActive() {
-        return isActive;
+        return active;
     }
 
     public void setActive(boolean active) {
-        isActive = active;
+        this.active = active;
     }
 }

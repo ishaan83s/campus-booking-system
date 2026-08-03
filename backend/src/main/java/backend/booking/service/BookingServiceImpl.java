@@ -11,6 +11,9 @@ import backend.common.enums.BookingStatus;
 import backend.common.enums.Role;
 import backend.common.enums.SlotStatus;
 import backend.common.repository.UserRepository;
+import backend.exception.ConflictException;
+import backend.exception.ForbiddenOperationException;
+import backend.exception.ResourceNotFoundException;
 import backend.notification.dto.NotificationPayload;
 import backend.notification.service.NotificationService;
 import backend.professor.model.Slot;
@@ -19,10 +22,8 @@ import backend.professor.service.SlotService;
 import backend.waitlist.dto.WaitlistEntryResponse;
 import backend.waitlist.service.WaitlistService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -70,23 +71,19 @@ public class BookingServiceImpl implements BookingService {
         // UPDATE) to prevent a race between two students booking the last
         // seat simultaneously (Section 3.3, step 1).
         Slot slot = slotRepository.findByIdForUpdate(request.getSlotId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Slot with id " + request.getSlotId() + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Slot with id " + request.getSlotId() + " not found"));
 
         // Step 2: reject cancelled/completed slots or past dates -> 409.
         if (slot.getStatus() == SlotStatus.CANCELLED || slot.getStatus() == SlotStatus.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "This slot is no longer accepting bookings");
+            throw new ConflictException("This slot is no longer accepting bookings");
         }
         if (slot.getSlotDate().isBefore(LocalDate.now())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "This slot's date has already passed");
+            throw new ConflictException("This slot's date has already passed");
         }
 
         // Step 3: reject a duplicate active booking for the same slot -> 409.
         if (bookingRepository.existsByStudentIdAndSlotIdAndStatus(studentId, slot.getId(), BookingStatus.BOOKED)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "You already have an active booking for this slot");
+            throw new ConflictException("You already have an active booking for this slot");
         }
 
         // Step 4: room available -> confirm the booking.
@@ -127,16 +124,17 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     public void cancelBooking(Long requesterId, Role requesterRole, Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Booking with id " + bookingId + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking with id " + bookingId + " not found"));
 
         boolean isOwner = Objects.equals(booking.getStudent().getId(), requesterId);
         boolean isAdmin = requesterRole == Role.ADMIN;
         if (!isOwner && !isAdmin) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "You can only cancel your own bookings");
+            throw new ForbiddenOperationException("You can only cancel your own bookings");
         }
 
+        if (booking.getStatus() != BookingStatus.BOOKED) {
+            throw new ConflictException("Booking is no longer active");
+        }
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setCancelledAt(LocalDateTime.now());
 

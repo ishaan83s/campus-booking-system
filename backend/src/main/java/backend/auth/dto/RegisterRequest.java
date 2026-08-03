@@ -1,16 +1,20 @@
 package backend.auth.dto;
 
 import backend.common.enums.Role;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class RegisterRequest {
 
-    private String fullName;
+    @NotBlank @Size(max = 150) private String fullName;
 
-    private String email;
+    @NotBlank @Email @Size(max = 150) private String email;
 
-    private String password;
+    @NotBlank @Size(min = 8, max = 100) private String password;
 
-    private Role role;
+    @NotNull private Role role;
 
     private String rollNo;
 
