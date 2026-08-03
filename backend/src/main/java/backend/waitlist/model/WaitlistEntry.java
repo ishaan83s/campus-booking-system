@@ -51,6 +51,7 @@ public class WaitlistEntry extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Builder.Default
     private WaitlistStatus status = WaitlistStatus.WAITING;
 
     @Column(name = "promoted_at")

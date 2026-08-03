@@ -1,10 +1,13 @@
 package backend.auth.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
 public class LoginRequest {
 
-    private String email;
+    @NotBlank @Email private String email;
 
-    private String password;
+    @NotBlank private String password;
 
     public LoginRequest() {
     }
