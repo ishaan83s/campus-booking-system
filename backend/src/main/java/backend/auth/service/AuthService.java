@@ -1,15 +1,11 @@
 package backend.auth.service;
 
-import backend.auth.dto.AuthResponse;
-import backend.auth.dto.LoginRequest;
-import backend.auth.dto.RegisterRequest;
-import backend.auth.dto.UserResponse;
+import backend.auth.dto.*;
 
 public interface AuthService {
 
-    AuthResponse login(LoginRequest request);
-
     UserResponse register(RegisterRequest request);
 
-    UserResponse getCurrentUser(Long userId);
+    AuthResponse login(LoginRequest request);
+
 }

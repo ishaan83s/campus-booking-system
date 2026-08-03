@@ -1,24 +1,30 @@
 package backend.professor.dto;
 
 import backend.common.enums.SlotStatus;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class SlotResponse {
 
-    private Long slotId;
+    private Long id;
 
+    // Professor information
     private Long professorId;
 
+    private String professorName;
+
+    private String department;
+
+    private String officeLocation;
+
+    // Slot information
     private LocalDate slotDate;
 
     private LocalTime startTime;
@@ -30,5 +36,4 @@ public class SlotResponse {
     private Integer bookedCount;
 
     private SlotStatus status;
-
 }

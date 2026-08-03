@@ -1,18 +1,21 @@
 package backend.student.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class StudentProfileResponse {
 
-    private Long studentId;
+    private Long id;
+
     private String fullName;
-    private String rollNo;
+
+    private String rollNumber;
+
     private Integer yearOfStudy;
+
+    private String department;
 }

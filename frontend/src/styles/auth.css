@@ -1,0 +1,1275 @@
+/* =========================================================
+   CAMPUS BOOKING
+   AUTHENTICATION DESIGN SYSTEM
+   Login + Register + Light/Dark Mode
+========================================================= */
+
+
+/* =========================================================
+   1. AUTH PAGE
+========================================================= */
+
+.auth-page {
+    --orange: #ff7a00;
+    --orange-dark: #ed5f00;
+    --yellow: #ffbd18;
+    --yellow-light: #ffd86a;
+
+    --page-bg: #fff8ee;
+    --panel-bg: #ffffff;
+    --brand-bg: #fff7e9;
+
+    --text: #172033;
+    --muted: #6f7787;
+
+    --input-bg: #ffffff;
+    --input-border: #e4e4e4;
+
+    --soft-bg: #fff6e7;
+
+    width: 100%;
+    min-height: 100vh;
+    padding: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    position: relative;
+    overflow: hidden;
+
+    background: var(--page-bg);
+    color: var(--text);
+
+    transition:
+            background 0.35s ease,
+            color 0.35s ease;
+}
+
+
+/* =========================================================
+   2. DARK MODE
+========================================================= */
+
+.auth-page.dark {
+    --page-bg: #090d16;
+    --panel-bg: #101622;
+    --brand-bg: #121824;
+
+    --text: #f7f7f8;
+    --muted: #969eae;
+
+    --input-bg: #171e2c;
+    --input-border: #2b3445;
+
+    --soft-bg: #1b2029;
+}
+
+
+/* =========================================================
+   3. BACKGROUND DECORATION
+========================================================= */
+
+.auth-background-circle {
+    position: absolute;
+
+    border-radius: 50%;
+
+    pointer-events: none;
+}
+
+.circle-one {
+    width: 380px;
+    height: 380px;
+
+    top: -190px;
+    left: -120px;
+
+    background: rgba(255, 177, 0, 0.12);
+}
+
+.circle-two {
+    width: 450px;
+    height: 450px;
+
+    right: -190px;
+    bottom: -230px;
+
+    background: rgba(255, 122, 0, 0.09);
+}
+
+
+/* =========================================================
+   4. MAIN AUTH CARD
+========================================================= */
+
+.auth-container {
+    width: min(1180px, 100%);
+    min-height: 690px;
+
+    display: grid;
+    grid-template-columns: 52% 48%;
+
+    position: relative;
+    z-index: 2;
+
+    overflow: hidden;
+
+    border: 1px solid rgba(255, 145, 0, 0.15);
+    border-radius: 30px;
+
+    background: var(--panel-bg);
+
+    box-shadow:
+            0 30px 80px rgba(70, 45, 0, 0.12),
+            0 8px 30px rgba(255, 140, 0, 0.05);
+
+    transition: background 0.35s ease;
+}
+
+.auth-page.dark .auth-container {
+    border-color: rgba(255, 167, 38, 0.12);
+
+    box-shadow:
+            0 35px 90px rgba(0, 0, 0, 0.55),
+            0 0 70px rgba(255, 122, 0, 0.04);
+}
+
+
+/* Register page can be slightly taller */
+
+.register-container {
+    min-height: 720px;
+}
+
+
+/* =========================================================
+   5. LEFT BRAND PANEL
+========================================================= */
+
+.auth-brand-panel {
+    padding: 54px 58px;
+
+    display: flex;
+    flex-direction: column;
+
+    position: relative;
+    overflow: hidden;
+
+    background:
+            radial-gradient(
+                    circle at 20% 10%,
+                    rgba(255, 190, 24, 0.13),
+                    transparent 32%
+            ),
+            var(--brand-bg);
+
+    transition: background 0.35s ease;
+}
+
+
+/* =========================================================
+   6. CAMPUS BOOKING LOGO
+========================================================= */
+
+.brand-logo {
+    width: 62px;
+    height: 62px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 24px;
+
+    border-radius: 19px;
+
+    background:
+            linear-gradient(
+                    135deg,
+                    var(--orange),
+                    var(--yellow)
+            );
+
+    box-shadow:
+            0 12px 30px rgba(255, 122, 0, 0.25);
+}
+
+
+.book-logo {
+    width: 38px;
+    height: 32px;
+
+    position: relative;
+}
+
+
+.book-left,
+.book-right {
+    width: 17px;
+    height: 23px;
+
+    position: absolute;
+    bottom: 2px;
+
+    background: white;
+}
+
+
+.book-left {
+    left: 1px;
+
+    border-radius: 4px 1px 2px 4px;
+
+    transform: skewY(7deg);
+}
+
+
+.book-right {
+    right: 1px;
+
+    border-radius: 1px 4px 4px 2px;
+
+    transform: skewY(-7deg);
+}
+
+
+.book-logo::after {
+    content: "";
+
+    width: 2px;
+    height: 21px;
+
+    position: absolute;
+    left: 18px;
+    bottom: 3px;
+
+    background: rgba(255, 139, 0, 0.55);
+
+    z-index: 3;
+}
+
+
+.clock-logo {
+    width: 17px;
+    height: 17px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    position: absolute;
+    top: -5px;
+    right: -5px;
+
+    z-index: 5;
+
+    border: 2px solid white;
+    border-radius: 50%;
+
+    background: var(--orange);
+
+    color: white;
+
+    font-size: 11px;
+    font-weight: 900;
+}
+
+
+/* =========================================================
+   7. CAMPUS BOOKING TITLE
+========================================================= */
+
+.brand-title {
+    margin-bottom: 35px;
+}
+
+
+.brand-title h1 {
+    margin: 0;
+
+    color: var(--text);
+
+    font-size: clamp(38px, 4vw, 58px);
+
+    line-height: 0.93;
+
+    font-weight: 900;
+
+    letter-spacing: -2px;
+}
+
+
+.brand-title h1 span {
+    display: block;
+
+    margin-top: 7px;
+
+    background:
+            linear-gradient(
+                    90deg,
+                    var(--orange),
+                    var(--yellow)
+            );
+
+    -webkit-background-clip: text;
+    background-clip: text;
+
+    color: transparent;
+}
+
+
+.title-line {
+    width: 75px;
+    height: 5px;
+
+    margin-top: 19px;
+
+    border-radius: 20px;
+
+    background:
+            linear-gradient(
+                    90deg,
+                    var(--orange),
+                    var(--yellow)
+            );
+}
+
+
+/* =========================================================
+   8. BRAND MESSAGE
+========================================================= */
+
+.brand-message h2 {
+    margin: 0 0 14px;
+
+    color: var(--text);
+
+    font-size: 29px;
+
+    line-height: 1.15;
+
+    letter-spacing: -1px;
+}
+
+
+.brand-message h2 span {
+    color: var(--orange);
+}
+
+
+.brand-message > p {
+    max-width: 480px;
+
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 14px;
+
+    line-height: 1.75;
+}
+
+
+/* =========================================================
+   9. FEATURE LIST
+========================================================= */
+
+.feature-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 17px;
+
+    margin-top: 30px;
+}
+
+
+.feature-item {
+    display: flex;
+    align-items: center;
+
+    gap: 14px;
+}
+
+
+.feature-icon {
+    width: 41px;
+    height: 41px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid rgba(255, 135, 0, 0.18);
+    border-radius: 12px;
+
+    background: rgba(255, 160, 0, 0.09);
+
+    color: var(--orange);
+
+    font-size: 16px;
+    font-weight: 800;
+}
+
+
+.feature-item h3 {
+    margin: 0 0 3px;
+
+    color: var(--text);
+
+    font-size: 13px;
+}
+
+
+.feature-item p {
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 12px;
+}
+
+
+/* =========================================================
+   10. DECORATIVE CAMPUS BUILDING
+========================================================= */
+
+.campus-art {
+    position: absolute;
+
+    right: 0;
+    bottom: 0;
+
+    width: 230px;
+    height: 145px;
+
+    opacity: 0.85;
+
+    pointer-events: none;
+}
+
+
+.hill {
+    position: absolute;
+
+    border-radius: 50% 50% 0 0;
+}
+
+
+.hill-one {
+    width: 260px;
+    height: 80px;
+
+    right: -70px;
+    bottom: -25px;
+
+    background: rgba(255, 183, 0, 0.11);
+}
+
+
+.hill-two {
+    width: 190px;
+    height: 65px;
+
+    right: 80px;
+    bottom: -35px;
+
+    background: rgba(255, 112, 0, 0.08);
+}
+
+
+.campus-building {
+    width: 75px;
+    height: 58px;
+
+    position: absolute;
+
+    right: 70px;
+    bottom: 40px;
+
+    z-index: 3;
+
+    border-radius: 4px;
+
+    background:
+            linear-gradient(
+                    180deg,
+                    var(--yellow),
+                    var(--orange)
+            );
+
+    opacity: 0.35;
+}
+
+
+.building-roof {
+    width: 0;
+    height: 0;
+
+    position: absolute;
+
+    top: -23px;
+    left: -8px;
+
+    border-left: 45px solid transparent;
+    border-right: 45px solid transparent;
+    border-bottom: 25px solid var(--orange);
+}
+
+
+.building-clock {
+    position: absolute;
+
+    top: 8px;
+    left: 27px;
+
+    color: white;
+
+    font-size: 21px;
+}
+
+
+/* =========================================================
+   11. RIGHT AUTH PANEL
+========================================================= */
+
+.auth-form-panel {
+    padding: 42px 58px 55px;
+
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+
+    background: var(--panel-bg);
+
+    transition: background 0.35s ease;
+}
+
+
+/* =========================================================
+   12. LIGHT / DARK TOGGLE
+========================================================= */
+
+.theme-switch-container {
+    display: flex;
+    justify-content: flex-end;
+
+    margin-bottom: 35px;
+}
+
+
+.theme-switch {
+    width: 76px;
+    height: 36px;
+
+    padding: 4px 8px;
+
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    border: 1px solid var(--input-border);
+    border-radius: 30px;
+
+    background: var(--soft-bg);
+
+    cursor: pointer;
+
+    transition: 0.3s ease;
+}
+
+
+.sun,
+.moon {
+    position: relative;
+
+    z-index: 2;
+
+    font-size: 14px;
+}
+
+
+.sun {
+    color: #ff9d00;
+}
+
+
+.moon {
+    color: #6f7787;
+}
+
+
+.switch-ball {
+    width: 27px;
+    height: 27px;
+
+    position: absolute;
+
+    left: 4px;
+
+    border-radius: 50%;
+
+    background:
+            linear-gradient(
+                    135deg,
+                    var(--orange),
+                    var(--yellow)
+            );
+
+    box-shadow:
+            0 4px 12px rgba(255, 122, 0, 0.25);
+
+    transition: transform 0.3s ease;
+}
+
+
+.theme-switch.active .switch-ball {
+    transform: translateX(39px);
+}
+
+
+/* =========================================================
+   13. LOGIN / REGISTER CONTENT
+========================================================= */
+
+.login-content {
+    width: 100%;
+
+    max-width: 410px;
+
+    margin: auto;
+}
+
+
+.register-content {
+    max-width: 430px;
+}
+
+
+.welcome-label {
+    margin-bottom: 12px;
+
+    color: var(--orange);
+
+    font-size: 11px;
+    font-weight: 800;
+
+    letter-spacing: 2.5px;
+}
+
+
+.login-content > h2 {
+    margin: 0 0 8px;
+
+    color: var(--text);
+
+    font-size: 32px;
+
+    letter-spacing: -1.2px;
+}
+
+
+.login-subtitle {
+    margin: 0 0 34px;
+
+    color: var(--muted);
+
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   14. FORM
+========================================================= */
+
+.form-group {
+    margin-bottom: 21px;
+}
+
+
+.form-group label {
+    display: block;
+
+    margin-bottom: 8px;
+
+    color: var(--text);
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+
+.password-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+
+.forgot-password {
+    margin-bottom: 8px;
+
+    border: none;
+
+    background: none;
+
+    color: var(--orange);
+
+    font-size: 11px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+
+.input-wrapper {
+    position: relative;
+}
+
+
+.input-wrapper input {
+    width: 100%;
+    height: 51px;
+
+    padding: 0 46px;
+
+    outline: none;
+
+    border: 1px solid var(--input-border);
+    border-radius: 12px;
+
+    background: var(--input-bg);
+
+    color: var(--text);
+
+    font-size: 13px;
+
+    transition:
+            border 0.2s ease,
+            box-shadow 0.2s ease,
+            background 0.35s ease;
+}
+
+
+.input-wrapper input::placeholder {
+    color: #9ba1ad;
+}
+
+
+.input-wrapper input:focus {
+    border-color: var(--orange);
+
+    box-shadow:
+            0 0 0 4px rgba(255, 122, 0, 0.09);
+}
+
+
+.input-icon {
+    position: absolute;
+
+    top: 50%;
+    left: 16px;
+
+    z-index: 2;
+
+    transform: translateY(-50%);
+
+    color: var(--orange);
+
+    font-size: 15px;
+}
+
+
+.show-password {
+    position: absolute;
+
+    top: 50%;
+    right: 15px;
+
+    transform: translateY(-50%);
+
+    border: none;
+
+    background: none;
+
+    color: var(--muted);
+
+    cursor: pointer;
+
+    font-size: 16px;
+}
+
+
+/* =========================================================
+   15. PRIMARY BUTTON
+========================================================= */
+
+.sign-in-button {
+    width: 100%;
+    height: 52px;
+
+    margin-top: 8px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 13px;
+
+    border: none;
+    border-radius: 12px;
+
+    background:
+            linear-gradient(
+                    90deg,
+                    #ff6b00,
+                    #ff9400,
+                    #ffc21c
+            );
+
+    color: white;
+
+    font-size: 12px;
+    font-weight: 900;
+
+    letter-spacing: 1.3px;
+
+    cursor: pointer;
+
+    box-shadow:
+            0 12px 25px rgba(255, 123, 0, 0.22);
+
+    transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease,
+            opacity 0.2s ease;
+}
+
+
+.sign-in-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+
+    box-shadow:
+            0 16px 30px rgba(255, 123, 0, 0.3);
+}
+
+
+.sign-in-button:disabled {
+    opacity: 0.65;
+
+    cursor: not-allowed;
+}
+
+
+.button-arrow {
+    font-size: 19px;
+}
+
+
+/* =========================================================
+   16. LOGIN DIVIDER
+========================================================= */
+
+.divider {
+    display: flex;
+    align-items: center;
+
+    gap: 14px;
+
+    margin: 25px 0;
+}
+
+
+.divider span {
+    flex: 1;
+
+    height: 1px;
+
+    background: var(--input-border);
+}
+
+
+.divider p {
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 10px;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   17. CREATE ACCOUNT BUTTON — LOGIN PAGE
+========================================================= */
+
+.create-account-button {
+    width: 100%;
+    height: 50px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    border: 1px solid var(--input-border);
+    border-radius: 12px;
+
+    background: var(--input-bg);
+
+    color: var(--text);
+
+    font-size: 11px;
+    font-weight: 800;
+
+    letter-spacing: 0.8px;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+
+.create-account-button:hover {
+    border-color: var(--orange);
+
+    background: rgba(255, 145, 0, 0.05);
+
+    color: var(--orange);
+}
+
+
+.create-icon {
+    color: var(--orange);
+
+    font-size: 15px;
+}
+
+
+/* =========================================================
+   18. SECURITY MESSAGE
+========================================================= */
+
+.security-message {
+    margin-top: 31px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    color: var(--muted);
+
+    font-size: 10px;
+}
+
+
+.security-message > span {
+    color: var(--orange);
+}
+
+
+.security-message b {
+    color: var(--yellow);
+}
+
+
+/* =========================================================
+   19. REGISTER ROLE SELECTOR
+========================================================= */
+
+.role-selector {
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 12px;
+
+    margin-top: 4px;
+}
+
+
+.role-card {
+    min-height: 76px;
+
+    padding: 13px 14px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 11px;
+
+    border: 1px solid var(--input-border);
+    border-radius: 12px;
+
+    background: var(--input-bg);
+
+    color: var(--text);
+
+    cursor: pointer;
+
+    text-align: left;
+
+    transition:
+            border-color 0.2s ease,
+            background 0.2s ease,
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
+}
+
+
+.role-card:hover {
+    border-color: rgba(255, 122, 0, 0.55);
+
+    transform: translateY(-1px);
+}
+
+
+.role-card.selected {
+    border-color: var(--orange);
+
+    background:
+            linear-gradient(
+                    135deg,
+                    rgba(255, 122, 0, 0.10),
+                    rgba(255, 193, 28, 0.08)
+            );
+
+    box-shadow:
+            0 0 0 3px rgba(255, 122, 0, 0.07);
+}
+
+
+.role-icon {
+    width: 37px;
+    height: 37px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: rgba(255, 145, 0, 0.10);
+
+    color: var(--orange);
+
+    font-size: 17px;
+}
+
+
+.role-card.selected .role-icon {
+    background:
+            linear-gradient(
+                    135deg,
+                    var(--orange),
+                    var(--yellow)
+            );
+
+    color: white;
+}
+
+
+.role-card strong {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: var(--text);
+
+    font-size: 12px;
+}
+
+
+.role-card small {
+    display: block;
+
+    color: var(--muted);
+
+    font-size: 9px;
+    font-weight: 500;
+}
+
+
+/* =========================================================
+   20. REGISTER SUCCESS / ERROR MESSAGE
+========================================================= */
+
+.auth-message {
+    margin-top: 16px;
+
+    padding: 11px 14px;
+
+    border: 1px solid rgba(255, 122, 0, 0.25);
+    border-radius: 10px;
+
+    background: rgba(255, 145, 0, 0.07);
+
+    color: var(--orange);
+
+    text-align: center;
+
+    font-size: 11px;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   21. REGISTER → LOGIN LINK
+========================================================= */
+
+.register-login-link {
+    margin-top: 24px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    color: var(--muted);
+
+    font-size: 11px;
+}
+
+
+.register-login-link button {
+    padding: 0;
+
+    border: none;
+
+    background: transparent;
+
+    color: var(--orange);
+
+    font-size: 11px;
+    font-weight: 900;
+
+    letter-spacing: 0.5px;
+
+    cursor: pointer;
+}
+
+
+.register-login-link button:hover {
+    text-decoration: underline;
+}
+
+
+/* =========================================================
+   22. TABLET
+========================================================= */
+
+@media (max-width: 900px) {
+
+    .auth-page {
+        padding: 18px;
+    }
+
+
+    .auth-container {
+        grid-template-columns: 1fr;
+    }
+
+
+    .auth-brand-panel {
+        padding: 45px;
+    }
+
+
+    .campus-art {
+        display: none;
+    }
+
+
+    .feature-list {
+        display: none;
+    }
+
+
+    .brand-title h1 {
+        font-size: 45px;
+    }
+
+
+    .auth-form-panel {
+        padding: 35px 45px 50px;
+    }
+}
+
+
+/* =========================================================
+   23. MOBILE
+========================================================= */
+
+@media (max-width: 520px) {
+
+    .auth-page {
+        padding: 0;
+    }
+
+
+    .auth-container,
+    .register-container {
+        min-height: 100vh;
+
+        border: none;
+        border-radius: 0;
+    }
+
+
+    .auth-brand-panel {
+        padding: 30px 25px;
+    }
+
+
+    .brand-logo {
+        width: 52px;
+        height: 52px;
+    }
+
+
+    .brand-title {
+        margin-bottom: 22px;
+    }
+
+
+    .brand-title h1 {
+        font-size: 38px;
+    }
+
+
+    .brand-message h2 {
+        font-size: 24px;
+    }
+
+
+    .auth-form-panel {
+        padding: 25px;
+    }
+
+
+    .theme-switch-container {
+        margin-bottom: 25px;
+    }
+
+
+    .login-content > h2 {
+        font-size: 28px;
+    }
+
+
+    .role-selector {
+        grid-template-columns: 1fr;
+    }
+}

@@ -5,15 +5,7 @@ import backend.student.dto.StudentProfileResponse;
 
 public interface StudentService {
 
-    StudentProfileResponse createProfile(
-            Long userId,
-            StudentProfileRequest request
-    );
+    StudentProfileResponse getStudentProfile(Long id);
 
-    StudentProfileResponse getProfile(Long studentId);
-
-    StudentProfileResponse updateProfile(
-            Long studentId,
-            StudentProfileRequest request
-    );
+    StudentProfileResponse createStudentProfile(StudentProfileRequest request);
 }

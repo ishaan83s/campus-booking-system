@@ -1,42 +1,34 @@
 package backend.booking.controller;
 
-import backend.booking.dto.BookingHistoryResponse;
 import backend.booking.dto.BookingRequest;
+import backend.booking.dto.BookingResponse;
 import backend.booking.dto.BookingResult;
 import backend.booking.service.BookingService;
-import backend.common.entity.User;
-import backend.common.enums.BookingStatus;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/bookings")
-@RequiredArgsConstructor
 public class BookingController {
 
     private final BookingService bookingService;
 
-    /**
-     * Student books a slot.
-     *
-     * POST /api/bookings
-     */
-    @PostMapping
-    public ResponseEntity<?> createBooking(
-            @AuthenticationPrincipal User user,
-            @RequestBody BookingRequest request
-    ) {
+    public BookingController(BookingService bookingService) {
+        this.bookingService = bookingService;
+    }
 
-        BookingResult result =
-                bookingService.createBooking(user.getId(), request);
+    @PostMapping
+    public ResponseEntity<?> createBooking(@RequestBody BookingRequest request) {
+
+        BookingResult result = bookingService.createBooking(request);
 
         if ("WAITLISTED".equals(result.getType())) {
             return ResponseEntity
                     .status(HttpStatus.ACCEPTED)
-                    .body(result.getWaitlist());
+                    .body(result.getWaitlistEntry());
         }
 
         return ResponseEntity
@@ -44,48 +36,14 @@ public class BookingController {
                 .body(result.getBooking());
     }
 
-    /**
-     * Student/Admin cancels booking.
-     *
-     * DELETE /api/bookings/{bookingId}
-     */
+    @GetMapping("/student/{studentId}")
+    public List<BookingResponse> getBookings(@PathVariable Long studentId) {
+        return bookingService.getStudentBookings(studentId);
+    }
+
     @DeleteMapping("/{bookingId}")
-    public ResponseEntity<Void> cancelBooking(
-            @AuthenticationPrincipal User user,
-            @PathVariable Long bookingId
-    ) {
-
-        bookingService.cancelBooking(
-                user.getId(),
-                user.getRole(),
-                bookingId
-        );
-
-        return ResponseEntity.noContent().build();
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancelBooking(@PathVariable Long bookingId) {
+        bookingService.cancelBooking(bookingId);
     }
-
-    /**
-     * Logged-in student's booking history.
-     *
-     * GET /api/bookings/me
-     * GET /api/bookings/me?status=BOOKED
-     */
-    @GetMapping("/me")
-    public ResponseEntity<BookingHistoryResponse> getMyBookings(
-
-            @AuthenticationPrincipal User user,
-
-            @RequestParam(required = false)
-            BookingStatus status
-    ) {
-
-        BookingHistoryResponse response =
-                bookingService.getBookingHistory(
-                        user.getId(),
-                        status
-                );
-
-        return ResponseEntity.ok(response);
-    }
-
 }

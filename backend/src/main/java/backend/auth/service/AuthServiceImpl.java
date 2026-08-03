@@ -4,8 +4,6 @@ import backend.auth.dto.AuthResponse;
 import backend.auth.dto.LoginRequest;
 import backend.auth.dto.RegisterRequest;
 import backend.auth.dto.UserResponse;
-import backend.auth.exception.InvalidCredentialsException;
-import backend.auth.exception.UserAlreadyExistsException;
 import backend.common.entity.User;
 import backend.common.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -20,49 +18,17 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public AuthResponse login(LoginRequest request) {
-
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() ->
-                        new InvalidCredentialsException("Invalid email or password"));
-
-        // TODO: Replace with BCrypt password matching in Phase 2
-        if (!user.getPasswordHash().equals(request.getPassword())) {
-            throw new InvalidCredentialsException("Invalid email or password");
-        }
-
-        return AuthResponse.builder()
-                .accessToken("JWT_TOKEN_PLACEHOLDER")
-                .tokenType("Bearer")
-                .expiresIn(3600L)
-                .user(UserResponse.builder()
-                        .id(user.getId())
-                        .fullName(user.getFullName())
-                        .email(user.getEmail())
-                        .role(user.getRole())
-                        .isActive(user.getIsActive())
-                        .createdAt(user.getCreatedAt())
-                        .build())
-                .build();
-    }
-
-    @Override
     public UserResponse register(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new UserAlreadyExistsException(
-                    "An account with this email already exists");
+            throw new RuntimeException("Email already exists");
         }
 
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
-
-                // TODO: Replace with BCrypt encoding in Phase 2
-                .passwordHash(request.getPassword())
-
+                .password(request.getPassword())
                 .role(request.getRole())
-                .isActive(true)
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -72,25 +38,29 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(savedUser.getFullName())
                 .email(savedUser.getEmail())
                 .role(savedUser.getRole())
-                .isActive(savedUser.getIsActive())
-                .createdAt(savedUser.getCreatedAt())
                 .build();
     }
 
     @Override
-    public UserResponse getCurrentUser(Long userId) {
+    public AuthResponse login(LoginRequest request) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() ->
-                        new InvalidCredentialsException("User not found"));
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return UserResponse.builder()
+        if (!user.getPassword().equals(request.getPassword())) {
+            throw new RuntimeException("Invalid Password");
+        }
+
+        UserResponse response = UserResponse.builder()
                 .id(user.getId())
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .isActive(user.getIsActive())
-                .createdAt(user.getCreatedAt())
+                .build();
+
+        return AuthResponse.builder()
+                .message("Login Successful")
+                .user(response)
                 .build();
     }
 }

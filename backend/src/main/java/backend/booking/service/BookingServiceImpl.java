@@ -1,95 +1,81 @@
 package backend.booking.service;
 
-import backend.booking.dto.BookingHistoryResponse;
 import backend.booking.dto.BookingRequest;
 import backend.booking.dto.BookingResponse;
 import backend.booking.dto.BookingResult;
-import backend.booking.model.Booking;
+import backend.booking.entity.Booking;
 import backend.booking.repository.BookingRepository;
-import backend.common.entity.User;
 import backend.common.enums.BookingStatus;
-import backend.common.enums.Role;
 import backend.common.enums.SlotStatus;
-import backend.common.repository.UserRepository;
-import backend.exception.ConflictException;
-import backend.exception.ForbiddenOperationException;
-import backend.exception.ResourceNotFoundException;
-import backend.professor.model.Slot;
+import backend.professor.entity.Slot;
 import backend.professor.repository.SlotRepository;
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
+import backend.student.entity.StudentProfile;
+import backend.student.repository.StudentProfileRepository;
+import backend.waitlist.dto.WaitlistEntryResponse;
+import backend.waitlist.service.WaitlistService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-@Transactional
 public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
+    private final StudentProfileRepository studentRepository;
     private final SlotRepository slotRepository;
-    private final UserRepository userRepository;
+    private final WaitlistService waitlistService;
+
+    public BookingServiceImpl(
+            BookingRepository bookingRepository,
+            StudentProfileRepository studentRepository,
+            SlotRepository slotRepository,
+            WaitlistService waitlistService) {
+
+        this.bookingRepository = bookingRepository;
+        this.studentRepository = studentRepository;
+        this.slotRepository = slotRepository;
+        this.waitlistService = waitlistService;
+    }
 
     @Override
-    public BookingResult createBooking(Long studentId, BookingRequest request) {
+    @Transactional
+    public BookingResult createBooking(BookingRequest request) {
 
-        User student = userRepository.findById(studentId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Student with id " + studentId + " not found"
-                        ));
+        StudentProfile student = studentRepository.findById(request.getStudentId())
+                .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        Slot slot = slotRepository.findByIdForUpdate(request.getSlotId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Slot with id " + request.getSlotId() + " not found"
-                        ));
+        Slot slot = slotRepository.findById(request.getSlotId())
+                .orElseThrow(() -> new RuntimeException("Slot not found"));
 
-        if (slot.getStatus() == SlotStatus.CANCELLED
-                || slot.getStatus() == SlotStatus.COMPLETED) {
-
-            throw new ConflictException(
-                    "Booking is not allowed for this slot."
-            );
-        }
-
-        if (slot.getSlotDate().isBefore(LocalDate.now())) {
-
-            throw new ConflictException(
-                    "Cannot book a past slot."
-            );
-        }
-
-        boolean alreadyBooked =
-                bookingRepository.existsByStudentIdAndSlotIdAndStatus(
-                        studentId,
-                        slot.getId(),
-                        BookingStatus.BOOKED
-                );
-
-        if (alreadyBooked) {
-            throw new ConflictException(
-                    "You already have an active booking for this slot."
-            );
-        }
-
+        // If the slot is already full, add the student to the waitlist.
         if (slot.getBookedCount() >= slot.getCapacity()) {
 
-            /*
-             * Phase 2:
-             * return BookingResult.waitlisted(
-             *      waitlistService.joinWaitlist(studentId, slot.getId())
-             * );
-             */
+            WaitlistEntryResponse waitlistResponse =
+                    waitlistService.joinWaitlist(
+                            student.getId(),
+                            slot.getId()
+                    );
 
-            throw new ConflictException(
-                    "Slot is already full."
-            );
+            return BookingResult.builder()
+                    .type("WAITLISTED")
+                    .booking(null)
+                    .waitlistEntry(waitlistResponse)
+                    .build();
         }
+
+        // Otherwise create a confirmed booking.
+        slot.setBookedCount(slot.getBookedCount() + 1);
+
+        if (slot.getBookedCount() >= slot.getCapacity()) {
+            slot.setStatus(SlotStatus.FULL);
+        } else {
+            slot.setStatus(SlotStatus.AVAILABLE);
+        }
+
+        slotRepository.save(slot);
 
         Booking booking = Booking.builder()
                 .student(student)
@@ -98,140 +84,63 @@ public class BookingServiceImpl implements BookingService {
                 .bookedAt(LocalDateTime.now())
                 .build();
 
-        bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
 
-        slot.setBookedCount(slot.getBookedCount() + 1);
-
-        if (slot.getBookedCount() >= slot.getCapacity()) {
-            slot.setStatus(SlotStatus.FULL);
-        }
-
-        slotRepository.save(slot);
-
-        BookingResponse response = BookingResponse.builder()
-                .bookingId(booking.getId())
-                .slotId(slot.getId())
+        BookingResponse bookingResponse = BookingResponse.builder()
+                .bookingId(savedBooking.getId())
                 .studentId(student.getId())
-                .status(booking.getStatus())
-                .bookedAt(booking.getBookedAt())
-                .slotDate(slot.getSlotDate())
-                .startTime(slot.getStartTime())
-                .endTime(slot.getEndTime())
-                .professorName(slot.getProfessor().getFullName())
+                .slotId(slot.getId())
+                .status(savedBooking.getStatus())
                 .build();
 
-        return BookingResult.booked(response);
+        return BookingResult.builder()
+                .type("BOOKED")
+                .booking(bookingResponse)
+                .waitlistEntry(null)
+                .build();
     }
+
     @Override
-    public void cancelBooking(Long requesterId,
-                              Role requesterRole,
-                              Long bookingId) {
+    public List<BookingResponse> getStudentBookings(Long studentId) {
+
+        return bookingRepository.findByStudentId(studentId)
+                .stream()
+                .map(booking -> BookingResponse.builder()
+                        .bookingId(booking.getId())
+                        .studentId(booking.getStudent().getId())
+                        .slotId(booking.getSlot().getId())
+                        .status(booking.getStatus())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void cancelBooking(Long bookingId) {
 
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Booking with id " + bookingId + " not found"
-                        ));
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (requesterRole != Role.ADMIN
-                && !booking.getStudent().getId().equals(requesterId)) {
-
-            throw new ForbiddenOperationException(
-                    "You can only cancel your own bookings."
-            );
-        }
-
+        // Prevent cancelling the same booking twice.
         if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new ConflictException(
-                    "Booking is already cancelled."
-            );
+            throw new RuntimeException("Booking is already cancelled");
         }
-
-        Slot slot = slotRepository.findByIdForUpdate(
-                        booking.getSlot().getId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Slot with id "
-                                        + booking.getSlot().getId()
-                                        + " not found"
-                        ));
 
         booking.setStatus(BookingStatus.CANCELLED);
-        booking.setCancelledAt(LocalDateTime.now());
 
-        bookingRepository.save(booking);
+        Slot slot = booking.getSlot();
 
         if (slot.getBookedCount() > 0) {
             slot.setBookedCount(slot.getBookedCount() - 1);
         }
 
-        if (slot.getStatus() == SlotStatus.FULL) {
-            slot.setStatus(SlotStatus.OPEN);
-        }
+        slot.setStatus(SlotStatus.AVAILABLE);
 
         slotRepository.save(slot);
+        bookingRepository.save(booking);
 
-        /*
-         * ===============================
-         * Phase 2
-         * ===============================
-         *
-         * waitlistService.promoteNext(slot.getId());
-         *
-         * notificationService.sendBookingCancelled(...);
-         *
-         */
+        // If somebody is waiting, give the newly available seat
+        // to the first student in the waitlist.
+        waitlistService.promoteNext(slot.getId());
     }
-    @Override
-    public BookingHistoryResponse getBookingHistory(Long studentId,
-                                                    BookingStatus statusFilter) {
-
-        List<Booking> bookings;
-
-        if (statusFilter != null) {
-            bookings = bookingRepository.findByStudentIdAndStatus(
-                    studentId,
-                    statusFilter
-            );
-        } else {
-            bookings = bookingRepository.findByStudentId(studentId);
-        }
-
-        List<BookingResponse> responses = bookings.stream()
-                .map(this::mapToBookingResponse)
-                .collect(Collectors.toList());
-
-        return BookingHistoryResponse.builder()
-                .bookings(responses)
-
-                /*
-                 * Phase 2:
-                 *
-                 * Populate waitlist entries once the
-                 * Waitlist module is implemented.
-                 */
-                .waitlistEntries(List.of())
-                .build();
-    }
-
-    /**
-     * Maps Booking entity to BookingResponse DTO.
-     */
-    private BookingResponse mapToBookingResponse(Booking booking) {
-
-        Slot slot = booking.getSlot();
-
-        return BookingResponse.builder()
-                .bookingId(booking.getId())
-                .slotId(slot.getId())
-                .studentId(booking.getStudent().getId())
-                .status(booking.getStatus())
-                .bookedAt(booking.getBookedAt())
-                .slotDate(slot.getSlotDate())
-                .startTime(slot.getStartTime())
-                .endTime(slot.getEndTime())
-                .professorName(slot.getProfessor().getFullName())
-                .build();
-    }
-
 }

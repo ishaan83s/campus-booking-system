@@ -2,112 +2,62 @@ package backend.student.service;
 
 import backend.common.entity.User;
 import backend.common.repository.UserRepository;
-import backend.exception.ResourceNotFoundException;
 import backend.student.dto.StudentProfileRequest;
 import backend.student.dto.StudentProfileResponse;
-import backend.student.exception.DuplicateRollNoException;
-import backend.student.mapper.StudentProfileMapper;
-import backend.student.model.StudentProfile;
+import backend.student.entity.StudentProfile;
 import backend.student.repository.StudentProfileRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class StudentServiceImpl implements StudentService {
 
-    private final StudentProfileRepository studentProfileRepository;
+    private final StudentProfileRepository studentRepository;
     private final UserRepository userRepository;
-    private final StudentProfileMapper studentProfileMapper;
 
     public StudentServiceImpl(
-            StudentProfileRepository studentProfileRepository,
-            UserRepository userRepository,
-            StudentProfileMapper studentProfileMapper
-    ) {
-        this.studentProfileRepository = studentProfileRepository;
+            StudentProfileRepository studentRepository,
+            UserRepository userRepository) {
+
+        this.studentRepository = studentRepository;
         this.userRepository = userRepository;
-        this.studentProfileMapper = studentProfileMapper;
     }
 
     @Override
-    @Transactional
-    public StudentProfileResponse createProfile(
-            Long userId,
-            StudentProfileRequest request
-    ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "User with id " + userId + " not found"
-                ));
+    public StudentProfileResponse getStudentProfile(Long id) {
 
-        if (studentProfileRepository.existsByRollNo(request.getRollNo())) {
-            throw new DuplicateRollNoException(
-                    "A student profile with roll number "
-                            + request.getRollNo()
-                            + " already exists"
-            );
-        }
+        StudentProfile student = studentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        StudentProfile studentProfile = new StudentProfile();
-
-        studentProfile.setUser(user);
-        studentProfile.setRollNo(request.getRollNo());
-        studentProfile.setYearOfStudy(request.getYearOfStudy());
-
-        StudentProfile savedProfile =
-                studentProfileRepository.save(studentProfile);
-
-        return studentProfileMapper.toResponse(savedProfile);
+        return StudentProfileResponse.builder()
+                .id(student.getId())
+                .fullName(student.getUser().getFullName())
+                .rollNumber(student.getRollNumber())
+                .yearOfStudy(student.getYearOfStudy())
+                .department(student.getDepartment())
+                .build();
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public StudentProfileResponse getProfile(Long studentId) {
-        StudentProfile studentProfile =
-                studentProfileRepository.findByUserId(studentId)
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Student profile with user id "
-                                        + studentId
-                                        + " not found"
-                        ));
+    public StudentProfileResponse createStudentProfile(StudentProfileRequest request) {
 
-        return studentProfileMapper.toResponse(studentProfile);
-    }
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-    @Override
-    @Transactional
-    public StudentProfileResponse updateProfile(
-            Long studentId,
-            StudentProfileRequest request
-    ) {
-        StudentProfile studentProfile =
-                studentProfileRepository.findByUserId(studentId)
-                        .orElseThrow(() -> new ResourceNotFoundException(
-                                "Student profile with user id "
-                                        + studentId
-                                        + " not found"
-                        ));
+        StudentProfile student = StudentProfile.builder()
+                .user(user)
+                .rollNumber(request.getRollNumber())
+                .yearOfStudy(request.getYearOfStudy())
+                .department(request.getDepartment())
+                .build();
 
-        boolean rollNumberChanged =
-                !studentProfile.getRollNo().equals(request.getRollNo());
+        StudentProfile savedStudent = studentRepository.save(student);
 
-        if (rollNumberChanged
-                && studentProfileRepository.existsByRollNo(
-                request.getRollNo()
-        )) {
-            throw new DuplicateRollNoException(
-                    "A student profile with roll number "
-                            + request.getRollNo()
-                            + " already exists"
-            );
-        }
-
-        studentProfile.setRollNo(request.getRollNo());
-        studentProfile.setYearOfStudy(request.getYearOfStudy());
-
-        StudentProfile updatedProfile =
-                studentProfileRepository.save(studentProfile);
-
-        return studentProfileMapper.toResponse(updatedProfile);
+        return StudentProfileResponse.builder()
+                .id(savedStudent.getId())
+                .fullName(savedStudent.getUser().getFullName())
+                .rollNumber(savedStudent.getRollNumber())
+                .yearOfStudy(savedStudent.getYearOfStudy())
+                .department(savedStudent.getDepartment())
+                .build();
     }
 }
