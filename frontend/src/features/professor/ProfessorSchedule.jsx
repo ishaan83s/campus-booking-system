@@ -106,7 +106,7 @@ export function ProfessorSchedule({ token, notify, onGoToCreate }) {
             <Calendar size={18} color="var(--primary)" aria-hidden="true" />
             <CardTitle>Upcoming & Scheduled Slots</CardTitle>
           </div>
-          <span className="badge badge-info">{slots.length} Total</span>
+          <Badge value={`${slots.length} Total`} variant="info" />
         </CardHeader>
 
         <CardContent>
