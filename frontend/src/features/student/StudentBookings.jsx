@@ -72,7 +72,7 @@ export function StudentBookings({ token, notify }) {
               <Calendar size={18} color="var(--primary)" aria-hidden="true" />
               <CardTitle>Confirmed & History</CardTitle>
             </div>
-            <span className="badge badge-info">{history.bookings.length}</span>
+            <Badge value={history.bookings.length} variant="info" />
           </CardHeader>
 
           <CardContent>
@@ -151,7 +151,7 @@ export function StudentBookings({ token, notify }) {
               <Clock size={18} color="var(--warning-text)" aria-hidden="true" />
               <CardTitle>Waitlist Queue</CardTitle>
             </div>
-            <span className="badge badge-warning">{history.waitlistEntries.length}</span>
+            <Badge value={history.waitlistEntries.length} variant="warning" />
           </CardHeader>
 
           <CardContent>
