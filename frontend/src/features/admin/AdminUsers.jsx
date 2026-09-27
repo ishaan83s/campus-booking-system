@@ -60,10 +60,12 @@ export function AdminUsers({ token, notify }) {
   }
 
   const filteredUsers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return users.filter((u) => {
       const matchesSearch =
-        u.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email?.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        (u.fullName || "").toLowerCase().includes(q) ||
+        (u.email || "").toLowerCase().includes(q);
       const matchesRole = roleFilter === "ALL" || u.role === roleFilter;
       return matchesSearch && matchesRole;
     });
