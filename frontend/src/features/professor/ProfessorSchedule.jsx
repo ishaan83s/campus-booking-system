@@ -28,6 +28,7 @@ export function ProfessorSchedule({ token, notify, onGoToCreate }) {
   const [editSaving, setEditSaving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const hasBookings = editingSlot?.bookedCount > 0;
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -323,12 +324,21 @@ export function ProfessorSchedule({ token, notify, onGoToCreate }) {
 
             {editingSlot && (
               <div className="form-stack" style={{ margin: "16px 0" }}>
+                {hasBookings && (
+                  <p className="helper" id="edit-datetime-lock">
+                    Date and time cannot be changed after a slot has confirmed bookings. Seat capacity can still be adjusted.
+                  </p>
+                )}
+
                 <div className="field">
                   <label htmlFor="edit-date">Date</label>
                   <Input
                     id="edit-date"
                     type="date"
                     value={editingSlot.slotDate}
+                    disabled={hasBookings}
+                    style={hasBookings ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+                    aria-describedby={hasBookings ? "edit-datetime-lock" : undefined}
                     onChange={(e) =>
                       setEditingSlot({ ...editingSlot, slotDate: e.target.value })
                     }
@@ -343,6 +353,9 @@ export function ProfessorSchedule({ token, notify, onGoToCreate }) {
                       id="edit-start"
                       type="time"
                       value={editingSlot.startTime}
+                      disabled={hasBookings}
+                      style={hasBookings ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+                      aria-describedby={hasBookings ? "edit-datetime-lock" : undefined}
                       onChange={(e) =>
                         setEditingSlot({ ...editingSlot, startTime: e.target.value })
                       }
@@ -355,6 +368,9 @@ export function ProfessorSchedule({ token, notify, onGoToCreate }) {
                       id="edit-end"
                       type="time"
                       value={editingSlot.endTime}
+                      disabled={hasBookings}
+                      style={hasBookings ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+                      aria-describedby={hasBookings ? "edit-datetime-lock" : undefined}
                       onChange={(e) =>
                         setEditingSlot({ ...editingSlot, endTime: e.target.value })
                       }
