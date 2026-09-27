@@ -16,6 +16,7 @@ import { SESSION_KEY } from "./api/client";
 import { getMe } from "./api/auth";
 
 import { Header } from "./components/common/Header";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { AuthScreen } from "./features/auth/AuthScreen";
 
 // Lazy-loaded feature modules for code splitting
@@ -251,7 +252,11 @@ function AppContent({ session, setSession, notify }) {
               path="/admin/users"
               element={
                 <RequireRole session={session} allowedRole="ADMIN">
-                  <AdminUsers token={session?.token} notify={notify} />
+                  <AdminUsers
+                    token={session?.token}
+                    currentUser={session?.user}
+                    notify={notify}
+                  />
                 </RequireRole>
               }
             />
@@ -305,16 +310,24 @@ function App() {
           localStorage.setItem(SESSION_KEY, JSON.stringify(next));
           setSession(next);
         })
-        .catch(() => {
-          localStorage.removeItem(SESSION_KEY);
-          setSession(null);
+        .catch((err) => {
+          // Only clear stored session on confirmed 401 Unauthorized
+          if (err?.status === 401 || err?.message?.includes("session has expired")) {
+            localStorage.removeItem(SESSION_KEY);
+            setSession(null);
+          } else {
+            // Network outage or temporary server unavailability: preserve valid session
+            notify("Could not verify session with server. Keeping offline session active.", "warning");
+          }
         });
     }
   }, []);
 
   return (
     <BrowserRouter>
-      <AppContent session={session} setSession={setSession} notify={notify} />
+      <ErrorBoundary>
+        <AppContent session={session} setSession={setSession} notify={notify} />
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
