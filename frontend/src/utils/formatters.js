@@ -13,18 +13,14 @@ export function formatDate(value) {
   }
 }
 
-export function formatDateShort(value) {
-  if (!value) return "-";
-  try {
-    const dateStr = String(value).slice(0, 10);
-    return new Intl.DateTimeFormat("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    }).format(new Date(`${dateStr}T00:00:00`));
-  } catch {
-    return value;
-  }
+export function toLocalDateString(value) {
+  if (!value) return "";
+  const d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d.getTime())) return "";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function formatTime(value) {
