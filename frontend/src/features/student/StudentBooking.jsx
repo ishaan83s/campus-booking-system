@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { getProfessors, getProfessorSlots, bookSlot } from "../../api/student";
-import { formatDate, formatTime } from "../../utils/formatters";
+import { formatDate, formatTime, toLocalDateString } from "../../utils/formatters";
 import { PageHeading } from "../../components/common/PageHeading";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
@@ -64,7 +64,7 @@ export function StudentBooking({ token, notify }) {
   // Filter slots by selectedDate if one is picked
   const filteredSlots = useMemo(() => {
     if (!selectedDate) return slots;
-    const dateStr = selectedDate.toISOString().slice(0, 10);
+    const dateStr = toLocalDateString(selectedDate);
     return slots.filter((s) => s.slotDate && s.slotDate.slice(0, 10) === dateStr);
   }, [slots, selectedDate]);
 
@@ -166,7 +166,7 @@ export function StudentBooking({ token, notify }) {
                 }}
                 modifiers={{
                   hasSlots: (date) => {
-                    const str = date.toISOString().slice(0, 10);
+                    const str = toLocalDateString(date);
                     return datesWithSlots.has(str);
                   },
                 }}
@@ -182,7 +182,7 @@ export function StudentBooking({ token, notify }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <h2 style={{ fontSize: "1.1rem", margin: 0 }}>
                 {selectedDate
-                  ? `Available Slots on ${formatDate(selectedDate.toISOString())}`
+                  ? `Available Slots on ${formatDate(toLocalDateString(selectedDate))}`
                   : "All Upcoming Slots"}
               </h2>
               <span className="muted" style={{ fontSize: 13 }}>
