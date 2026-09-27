@@ -7,3 +7,16 @@
 @media (max-width:800px) { .auth-page { grid-template-columns:1fr; }.auth-aside { display:none; }.app-header { flex-wrap:wrap; gap:12px; padding-top:14px; padding-bottom:14px; }.app-header .brand { margin-right:auto; }.account-name,.account .badge-soft { display:none; }.app-header nav { order:3; width:100%; overflow:auto; gap:18px; }.app-shell { padding-top:42px; }.page-grid { grid-template-columns:1fr; }.side-card { position:static; }.two-column,.stat-grid { grid-template-columns:1fr; }.slot-row { align-items:start; }.notice { right:16px; bottom:16px; left:16px; max-width:none; } }
 
 .admin-action { margin-top:18px; }.inline-form,.button-row { display:flex; gap:10px; }.inline-form input { flex:1; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; outline:0; }
+.modal-backdrop { position:fixed; z-index:100; inset:0; display:grid; place-items:center; padding:16px; background:rgba(15,23,42,.5); backdrop-filter:blur(3px); }
+.confirm-modal { width:100%; max-width:440px; padding:24px; border:1px solid #e2e8f0; border-radius:12px; background:#fff; box-shadow:0 20px 40px rgba(15,23,42,.2); }
+.confirm-modal h3 { margin:0 0 8px; font-size:18px; font-weight:600; color:#0f172a; letter-spacing:-.03em; }
+.confirm-modal p { margin:0 0 20px; font-size:13px; line-height:1.5; color:#64748b; }
+.button-danger { color:#fff; background:#dc2626; border-color:transparent; }
+.button-danger:hover:not(:disabled) { background:#b91c1c; }
+.waitlist-banner { margin:14px 0 16px; padding:12px 14px; border:1px solid #fed7aa; border-radius:8px; background:#fff7ed; color:#9a3412; font-size:12px; line-height:1.5; }
+.waitlist-banner strong { display:block; margin-bottom:3px; color:#c2410c; }
+.button-waitlist { color:#fff; background:#ea580c; border-color:transparent; }
+.button-waitlist:hover:not(:disabled) { background:#c2410c; }
+.badge-full-waitlist { border-color:#fed7aa; color:#c2410c; background:#fff7ed; }
+.slot-row-full { border-color:#fed7aa; background:#fffaf5; }
+.side-card.side-card-active { border-color:#0f172a; box-shadow:0 0 0 2px rgba(15,23,42,.15); }
