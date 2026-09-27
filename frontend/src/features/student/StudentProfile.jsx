@@ -54,10 +54,10 @@ export function StudentProfile({ token, user, notify }) {
         <CardHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="avatar" style={{ width: 40, height: 40, fontSize: 16 }}>
-              {profile?.fullName?.[0]?.toUpperCase() ?? "S"}
+              {profile?.fullName?.[0]?.toUpperCase() || user?.fullName?.[0]?.toUpperCase() || "S"}
             </div>
             <div>
-              <CardTitle>{profile?.fullName || "Student Account"}</CardTitle>
+              <CardTitle>{profile?.fullName || user?.fullName || "Student Account"}</CardTitle>
               <p className="muted" style={{ fontSize: 13, margin: 0 }}>
                 {profile?.email || user?.email || ""}
               </p>
