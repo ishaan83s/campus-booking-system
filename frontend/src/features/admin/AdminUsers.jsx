@@ -85,7 +85,7 @@ export function AdminUsers({ token, notify }) {
             <Users size={18} color="var(--primary)" aria-hidden="true" />
             <CardTitle>Registered Accounts</CardTitle>
           </div>
-          <span className="badge badge-info">{users.length} Total</span>
+          <Badge value={`${users.length} Total`} variant="info" />
         </CardHeader>
 
         <CardContent>
