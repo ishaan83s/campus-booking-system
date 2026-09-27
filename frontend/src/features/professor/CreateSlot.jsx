@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { createSlot } from "../../api/professor";
+import { toLocalDateString } from "../../utils/formatters";
 import { PageHeading } from "../../components/common/PageHeading";
 import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
@@ -84,6 +85,7 @@ export function CreateSlot({ token, notify, onSlotCreated, onCancel }) {
               <Input
                 id="create-slotDate"
                 type="date"
+                min={toLocalDateString(new Date())}
                 value={form.slotDate}
                 onChange={update("slotDate")}
                 required
