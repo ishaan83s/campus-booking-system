@@ -17,10 +17,10 @@ public class User extends BaseEntity {
     private String password;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "role", nullable = false)
     private Role role;
 
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
     public User() {
