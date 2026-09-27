@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { User, CheckCircle2 } from "lucide-react";
 
-export function StudentProfile({ token, notify }) {
+export function StudentProfile({ token, user, notify }) {
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({ rollNo: "", yearOfStudy: "" });
   const [saving, setSaving] = useState(false);
@@ -59,7 +59,7 @@ export function StudentProfile({ token, notify }) {
             <div>
               <CardTitle>{profile?.fullName || "Student Account"}</CardTitle>
               <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                {profile?.email}
+                {profile?.email || user?.email || ""}
               </p>
             </div>
           </div>
