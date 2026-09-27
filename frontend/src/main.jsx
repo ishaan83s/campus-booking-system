@@ -1,704 +1,74 @@
-import "bootstrap/dist/css/bootstrap.min.css";
-import "./styles.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
+import { Toaster, toast } from "sonner";
+import "./styles/global.css";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
-const SESSION_KEY = "ohs.session";
-const formatDate = (value) => value ? new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }).format(new Date(`${value.slice(0, 10)}T00:00:00`)) : "-";
-const formatTime = (value) => value ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(`1970-01-01T${value}`)) : "-";
+import { SESSION_KEY } from "./api/client";
+import { getMe } from "./api/auth";
 
-async function api(path, { token, ...options } = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers },
-  });
-  if (response.status === 204) return null;
-  const body = await response.json().catch(() => null);
-  if (response.status === 401 && !path.startsWith("/api/auth/login")) {
-    localStorage.removeItem(SESSION_KEY);
-    window.dispatchEvent(new CustomEvent("ohs:session-expired"));
-    throw new Error("Your session has expired. Please sign in again.");
-  }
-  if (!response.ok) throw new Error(body?.message ?? `Request failed (${response.status})`);
-  return body;
-}
+import { Header } from "./components/common/Header";
+import { AuthScreen } from "./features/auth/AuthScreen";
 
-function Notice({ notice, onDismiss }) {
-  useEffect(() => {
-    if (!notice) return;
-    if (notice.kind !== "error") {
-      const timer = setTimeout(onDismiss, 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [notice, onDismiss]);
+import { StudentBooking } from "./features/student/StudentBooking";
+import { StudentBookings } from "./features/student/StudentBookings";
+import { StudentProfile } from "./features/student/StudentProfile";
 
-  if (!notice) return null;
-  return <div className={`notice ${notice.kind}`} role="status" aria-live="polite"><span>{notice.message}</span><button onClick={onDismiss} aria-label="Dismiss">×</button></div>;
-}
+import { ProfessorSchedule } from "./features/professor/ProfessorSchedule";
+import { CreateSlot } from "./features/professor/CreateSlot";
 
-function Badge({ value }) {
-  const slug = String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  return <span className={`badge-soft badge-${slug}`}>{value}</span>;
-}
-
-function ConfirmDialog({ isOpen, title, message, confirmText = "Confirm", confirmKind = "danger", onConfirm, onCancel }) {
-  const cancelBtnRef = useRef(null);
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") onCancel();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    cancelBtnRef.current?.focus();
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onCancel]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="modal-backdrop" onClick={onCancel} role="presentation">
-      <div
-        className="confirm-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-title"
-        aria-describedby="confirm-desc"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 id="confirm-title">{title}</h3>
-        <p id="confirm-desc">{message}</p>
-        <div className="button-row">
-          <button ref={cancelBtnRef} type="button" className="button" onClick={onCancel}>
-            Never mind
-          </button>
-          <button
-            type="button"
-            className={`button ${confirmKind === "danger" ? "button-danger" : "button-dark"}`}
-            onClick={onConfirm}
-          >
-            {confirmText}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AuthScreen({ onSession }) {
-  const [mode, setMode] = useState("login"); const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
-  const [login, setLogin] = useState({ email: "", password: "" });
-  const [register, setRegister] = useState({ fullName: "", email: "", password: "", role: "STUDENT", rollNo: "", yearOfStudy: "", department: "" });
-  const update = (setter, key) => (event) => setter((old) => ({ ...old, [key]: event.target.value }));
-  async function submit(event) {
-    event.preventDefault(); setError(""); setLoading(true);
-    try {
-      if (mode === "register") { await api("/api/auth/register", { method: "POST", body: JSON.stringify({ ...register, yearOfStudy: register.role === "STUDENT" ? Number(register.yearOfStudy) : null, rollNo: register.role === "STUDENT" ? register.rollNo : null, department: register.role === "PROFESSOR" ? register.department : null }) }); setMode("login"); setLogin({ email: register.email, password: register.password }); }
-      else { const result = await api("/api/auth/login", { method: "POST", body: JSON.stringify(login) }); const session = { token: result.accessToken, user: result.user, expiresIn: result.expiresIn }; localStorage.setItem(SESSION_KEY, JSON.stringify(session)); onSession(session); }
-    } catch (exception) { setError(exception.message); } finally { setLoading(false); }
-  }
-  return <main className="auth-page"><section className="auth-card"><div className="brand">OFFICE<span>HOURS</span></div><p className="eyebrow">SIMPLE, FOCUSED SCHEDULING</p><h1>{mode === "login" ? "Welcome back." : "Create your account."}</h1><p className="muted">Book time with your faculty without the back-and-forth.</p>
-    <div className="auth-tabs"><button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Sign in</button><button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>Register</button></div>
-    <form onSubmit={submit} className="form-stack">
-      {mode === "register" && <><Field label="Full name"><input value={register.fullName} onChange={update(setRegister, "fullName")} required maxLength="150" /></Field><Field label="Role"><select value={register.role} onChange={update(setRegister, "role")}><option value="STUDENT">Student</option><option value="PROFESSOR">Professor</option></select></Field></>}
-      <Field label="College email"><input type="email" value={mode === "login" ? login.email : register.email} onChange={mode === "login" ? update(setLogin, "email") : update(setRegister, "email")} required /></Field>
-      <Field label="Password"><input type="password" value={mode === "login" ? login.password : register.password} onChange={mode === "login" ? update(setLogin, "password") : update(setRegister, "password")} required minLength="8" /></Field>
-      {mode === "register" && register.role === "STUDENT" && <><Field label="Roll number"><input value={register.rollNo} onChange={update(setRegister, "rollNo")} required maxLength="50" /></Field><Field label="Year of study"><input type="number" min="1" max="8" value={register.yearOfStudy} onChange={update(setRegister, "yearOfStudy")} required /></Field></>}
-      {mode === "register" && register.role === "PROFESSOR" && <Field label="Department"><input value={register.department} onChange={update(setRegister, "department")} required maxLength="100" /></Field>}
-      {error && <p className="form-error">{error}</p>}<button className="button button-dark" disabled={loading}>{loading ? "Please wait..." : mode === "login" ? "Sign in" : "Create account"}</button>
-    </form></section><aside className="auth-aside"><div><span className="tiny-label">OFFICE HOURS / 01</span><h2>Make time<br /><em>matter.</em></h2><p>One clear view of availability, bookings, and waitlists.</p></div></aside></main>;
-}
-
-function Field({ label, children }) { return <label className="field"><span>{label}</span>{children}</label>; }
-
-function Header({ session, tab, setTab, onLogout }) {
-  const role = session.user.role;
-  const tabs = role === "STUDENT" ? [["book", "Book a slot"], ["bookings", "My bookings"], ["profile", "Profile"]] : role === "PROFESSOR" ? [["schedule", "My schedule"], ["create", "Add a slot"]] : [["overview", "Overview"], ["users", "Users"]];
-  return <><header className="app-header"><div className="brand">OFFICE<span>HOURS</span></div><nav>{tabs.map(([key, title]) => <button key={key} onClick={() => setTab(key)} className={key === tab ? "active" : ""}>{title}</button>)}</nav><div className="account"><span className="avatar">{session.user.fullName?.[0]}</span><span className="account-name">{session.user.fullName}</span><Badge value={role} /><button className="sign-out" onClick={onLogout}>Sign out</button></div></header></>;
-}
-
-function StudentBooking({ token, notify }) {
-  const [professors, setProfessors] = useState([]);
-  const [professor, setProfessor] = useState("");
-  const [slots, setSlots] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [reason, setReason] = useState("");
-  const [saving, setSaving] = useState(false);
-  const sideCardRef = useRef(null);
-
-  useEffect(() => {
-    api("/api/professors?page=0&size=50", { token })
-      .then((page) => {
-        const rows = page.content ?? [];
-        setProfessors(rows);
-        setProfessor(rows[0]?.professorId ? String(rows[0].professorId) : "");
-      })
-      .catch((e) => notify(e.message, "error"));
-  }, [token, notify]);
-
-  const loadSlots = useCallback(() => {
-    if (!professor) return;
-    api(`/api/professors/${professor}/slots`, { token })
-      .then((data) => setSlots(data.slots ?? []))
-      .catch((e) => notify(e.message, "error"));
-  }, [professor, token, notify]);
-
-  useEffect(() => {
-    loadSlots();
-  }, [loadSlots]);
-
-  function handleSelectSlot(slot) {
-    setSelected(slot);
-    if (typeof window !== "undefined" && window.innerWidth <= 800) {
-      setTimeout(() => {
-        sideCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 50);
-    }
-  }
-
-  async function book() {
-    if (!selected) return;
-    setSaving(true);
-    try {
-      const result = await api("/api/bookings", {
-        token,
-        method: "POST",
-        body: JSON.stringify({ slotId: selected.slotId })
-      });
-      notify(
-        result.bookingId
-          ? "Booking confirmed."
-          : `You are waitlisted at position ${result.position}.`,
-        "success"
-      );
-      setSelected(null);
-      setReason("");
-      loadSlots();
-    } catch (e) {
-      notify(e.message, "error");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const chosenProfessor = professors.find((item) => String(item.professorId) === professor);
-
-  return (
-    <section className="page-grid">
-      <div>
-        <PageHeading
-          eyebrow="STUDENT DASHBOARD"
-          title="Book office hours."
-          subtitle="Choose a professor and select a time that works for you."
-        />
-        <Field label="Professor">
-          <select value={professor} onChange={(e) => { setProfessor(e.target.value); setSelected(null); }}>
-            {professors.map((item) => (
-              <option key={item.professorId} value={item.professorId}>
-                {item.fullName} - {item.department}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <div className="slot-list">
-          {slots.map((slot) => {
-            const isSelectable = slot.status === "OPEN" || slot.status === "FULL";
-            const isFull = slot.status === "FULL";
-            const isSelected = selected?.slotId === slot.slotId;
-            const spacesLeft = slot.capacity - slot.bookedCount;
-            return (
-              <button
-                type="button"
-                className={`slot-row ${!isSelectable ? "disabled" : ""} ${isFull ? "slot-row-full" : ""} ${isSelected ? "selected" : ""}`}
-                disabled={!isSelectable}
-                onClick={() => handleSelectSlot(slot)}
-                key={slot.slotId}
-              >
-                <div>
-                  <strong>{formatDate(slot.slotDate)}</strong>
-                  <span>{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</span>
-                </div>
-                <div>
-                  <small>
-                    {isFull
-                      ? "0 spaces left (Waitlist only)"
-                      : `${spacesLeft} ${spacesLeft === 1 ? "space" : "spaces"} left`}
-                  </small>
-                  <Badge value={isFull ? "FULL / WAITLIST" : slot.status} />
-                </div>
-              </button>
-            );
-          })}
-          {!slots.length && <Empty text="No future slots are available for this professor." />}
-        </div>
-      </div>
-
-      <aside ref={sideCardRef} className={`side-card ${selected ? "side-card-active" : ""}`}>
-        <span className="tiny-label">
-          {selected?.status === "FULL" ? "JOIN WAITLIST" : "SELECTED TIME"}
-        </span>
-        {selected ? (
-          <>
-            <h2>{formatDate(selected.slotDate)}</h2>
-            <p className="slot-time">{formatTime(selected.startTime)} - {formatTime(selected.endTime)}</p>
-            <p className="muted">with {chosenProfessor?.fullName}</p>
-            {selected.status === "FULL" ? (
-              <div className="waitlist-banner">
-                <strong>This slot is currently full.</strong>
-                <p>Confirming will place you on the waitlist. You will automatically receive a confirmed booking if a space opens.</p>
-              </div>
-            ) : null}
-            <Field label="Reason for visit (optional)">
-              <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="What would you like to discuss?" maxLength="500" />
-            </Field>
-            <p className="helper">This note stays in your browser; the current backend booking API accepts only a slot ID.</p>
-            <button
-              className={`button w-100 ${selected.status === "FULL" ? "button-waitlist" : "button-dark"}`}
-              onClick={book}
-              disabled={saving}
-            >
-              {saving
-                ? (selected.status === "FULL" ? "Joining waitlist..." : "Booking...")
-                : (selected.status === "FULL" ? "Join waitlist" : "Confirm booking")}
-            </button>
-          </>
-        ) : (
-          <Empty text="Select an available time or full slot to review and confirm." />
-        )}
-      </aside>
-    </section>
-  );
-}
-
-function StudentBookings({ token, notify }) {
-  const [history, setHistory] = useState({ bookings: [], waitlistEntries: [] });
-  const [confirmDialog, setConfirmDialog] = useState(null);
-  const refresh = useCallback(() => api("/api/bookings/me", { token }).then(setHistory).catch((e) => notify(e.message, "error")), [token, notify]);
-  useEffect(() => { refresh(); }, [refresh]);
-
-  async function cancel(id) {
-    try {
-      await api(`/api/bookings/${id}`, { token, method: "DELETE" });
-      notify("Booking cancelled.", "success");
-      refresh();
-    } catch (e) {
-      notify(e.message, "error");
-    }
-  }
-
-  async function leave(id) {
-    try {
-      await api(`/api/bookings/waitlist/${id}`, { token, method: "DELETE" });
-      notify("Left waitlist.", "success");
-      refresh();
-    } catch (e) {
-      notify(e.message, "error");
-    }
-  }
-
-  return (
-    <section>
-      <PageHeading eyebrow="STUDENT DASHBOARD" title="Your bookings." subtitle="Review confirmed meetings and waitlist positions." />
-      <div className="two-column">
-        <Card title="Confirmed & history">
-          <Table headings={["Professor", "When", "Status", ""]}>
-            {history.bookings.map((booking) => (
-              <tr key={booking.bookingId}>
-                <td>{booking.professorName}</td>
-                <td>{formatDate(booking.slotDate)}<br /><span className="muted">{formatTime(booking.startTime)}</span></td>
-                <td><Badge value={booking.status} /></td>
-                <td>
-                  {booking.status === "BOOKED" && (
-                    <button
-                      className="link-button danger"
-                      onClick={() => setConfirmDialog({
-                        title: "Cancel this booking?",
-                        message: `This will release your confirmed reservation with ${booking.professorName} on ${formatDate(booking.slotDate)} (${formatTime(booking.startTime)} - ${formatTime(booking.endTime)}). If other students are waitlisted, your seat will immediately be offered to the next student in line.`,
-                        confirmText: "Yes, cancel booking",
-                        onConfirm: () => {
-                          setConfirmDialog(null);
-                          cancel(booking.bookingId);
-                        }
-                      })}
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </Table>
-          {!history.bookings.length && <Empty text="You have no bookings yet." />}
-        </Card>
-        <Card title="Waitlist">
-          <Table headings={["Slot", "Position", "Joined", "Status", ""]}>
-            {history.waitlistEntries.map((entry) => (
-              <tr key={entry.waitlistId}>
-                <td>Slot #{entry.slotId}</td>
-                <td>#{entry.position} in line</td>
-                <td>{formatDate(entry.createdAt)}</td>
-                <td><Badge value={entry.status} /></td>
-                <td>
-                  {entry.status === "WAITING" && (
-                    <button
-                      className="link-button danger"
-                      onClick={() => setConfirmDialog({
-                        title: "Leave waitlist?",
-                        message: `This will remove your position (#${entry.position}) in line for Slot #${entry.slotId}. If you change your mind later, you will have to join at the end of the waitlist.`,
-                        confirmText: "Yes, leave waitlist",
-                        onConfirm: () => {
-                          setConfirmDialog(null);
-                          leave(entry.waitlistId);
-                        }
-                      })}
-                    >
-                      Leave
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </Table>
-          {!history.waitlistEntries.length && <Empty text="You are not waiting for any slots." />}
-        </Card>
-      </div>
-
-      <ConfirmDialog
-        isOpen={Boolean(confirmDialog)}
-        title={confirmDialog?.title}
-        message={confirmDialog?.message}
-        confirmText={confirmDialog?.confirmText}
-        onCancel={() => setConfirmDialog(null)}
-        onConfirm={confirmDialog?.onConfirm}
-      />
-    </section>
-  );
-}
-
-function StudentProfile({ token, notify }) {
-  const [profile, setProfile] = useState(null); const [form, setForm] = useState({ rollNo: "", yearOfStudy: "" });
-  useEffect(() => { api("/api/students/me", { token }).then((data) => { setProfile(data); setForm({ rollNo: data.rollNo, yearOfStudy: data.yearOfStudy ?? "" }); }).catch((e) => notify(e.message, "error")); }, [token, notify]);
-  async function save(event) { event.preventDefault(); try { const result = await api("/api/students/me", { token, method: "PUT", body: JSON.stringify({ rollNo: form.rollNo, yearOfStudy: form.yearOfStudy ? Number(form.yearOfStudy) : null }) }); setProfile(result); notify("Profile updated.", "success"); } catch (e) { notify(e.message, "error"); } }
-  return <section className="narrow"><PageHeading eyebrow="STUDENT DASHBOARD" title="Your profile." subtitle="Keep your course details up to date." /><form className="card form-stack" onSubmit={save}>{profile && <p className="profile-name">{profile.fullName}</p>}<Field label="Roll number"><input value={form.rollNo} onChange={(e) => setForm({ ...form, rollNo: e.target.value })} required maxLength="50" /></Field><Field label="Year of study"><input value={form.yearOfStudy} onChange={(e) => setForm({ ...form, yearOfStudy: e.target.value })} type="number" min="1" max="8" /></Field><button className="button button-dark">Save changes</button></form></section>;
-}
-
-function ProfessorSchedule({ token, notify }) {
-  const [slots, setSlots] = useState([]);
-  const [roster, setRoster] = useState(null);
-  const [editing, setEditing] = useState(null);
-  const [confirmDialog, setConfirmDialog] = useState(null);
-  const refresh = useCallback(() => api("/api/professors/slots/me", { token }).then(setSlots).catch((e) => notify(e.message, "error")), [token, notify]);
-  useEffect(() => { refresh(); }, [refresh]);
-
-  async function cancel(id) {
-    try {
-      await api(`/api/professors/slots/${id}`, { token, method: "DELETE" });
-      notify("Slot cancelled.", "success");
-      refresh();
-    } catch (e) {
-      notify(e.message, "error");
-    }
-  }
-
-  async function viewRoster(id) {
-    try {
-      setRoster(await api(`/api/professors/slots/${id}/bookings`, { token }));
-    } catch (e) {
-      notify(e.message, "error");
-    }
-  }
-
-  async function updateSlot(event) {
-    event.preventDefault();
-    try {
-      await api(`/api/professors/slots/${editing.slotId}`, {
-        token,
-        method: "PUT",
-        body: JSON.stringify({
-          slotDate: editing.slotDate,
-          startTime: editing.startTime,
-          endTime: editing.endTime,
-          capacity: Number(editing.capacity)
-        })
-      });
-      notify("Slot updated.", "success");
-      setEditing(null);
-      refresh();
-    } catch (e) {
-      notify(e.message, "error");
-    }
-  }
-
-  return (
-    <section>
-      <PageHeading eyebrow="PROFESSOR DASHBOARD" title="Your schedule." subtitle="Manage your upcoming office-hour windows." />
-      <Card title="Upcoming slots">
-        <Table headings={["Date", "Time", "Capacity", "Status", ""]}>
-          {slots.map((slot) => (
-            <tr key={slot.slotId}>
-              <td>{formatDate(slot.slotDate)}</td>
-              <td>{formatTime(slot.startTime)} - {formatTime(slot.endTime)}</td>
-              <td>{slot.bookedCount}/{slot.capacity}</td>
-              <td><Badge value={slot.status} /></td>
-              <td>
-                <button className="link-button" onClick={() => viewRoster(slot.slotId)}>Roster</button>
-                {slot.status !== "CANCELLED" && (
-                  <>
-                    <button className="link-button ms-3" onClick={() => setEditing({ ...slot })}>Edit</button>
-                    <button
-                      className="link-button danger ms-3"
-                      onClick={() => setConfirmDialog({
-                        title: "Cancel this office hour slot?",
-                        message: `This will cancel your slot on ${formatDate(slot.slotDate)} (${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}). All confirmed student reservations and waiting list entries for this slot will be cancelled.`,
-                        confirmText: "Yes, cancel slot",
-                        onConfirm: () => {
-                          setConfirmDialog(null);
-                          cancel(slot.slotId);
-                        }
-                      })}
-                    >
-                      Cancel
-                    </button>
-                  </>
-                )}
-              </td>
-            </tr>
-          ))}
-        </Table>
-        {!slots.length && <Empty text="No upcoming slots. Add one to start accepting bookings." />}
-      </Card>
-
-      {editing && (
-        <Card title={`Edit slot #${editing.slotId}`}>
-          <form className="form-stack" onSubmit={updateSlot}>
-            <div className="two-column">
-              <Field label="Date"><input type="date" value={editing.slotDate} onChange={(e) => setEditing({ ...editing, slotDate: e.target.value })} required /></Field>
-              <Field label="Capacity"><input type="number" min="1" value={editing.capacity} onChange={(e) => setEditing({ ...editing, capacity: e.target.value })} required /></Field>
-              <Field label="Start time"><input type="time" value={editing.startTime} onChange={(e) => setEditing({ ...editing, startTime: e.target.value })} required /></Field>
-              <Field label="End time"><input type="time" value={editing.endTime} onChange={(e) => setEditing({ ...editing, endTime: e.target.value })} required /></Field>
-            </div>
-            <div className="button-row">
-              <button className="button button-dark">Save slot</button>
-              <button type="button" className="button" onClick={() => setEditing(null)}>Cancel</button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {roster && (
-        <Card title={`Roster for slot #${roster.slotId}`}>
-          <div className="two-column">
-            <div>
-              <h3>Bookings</h3>
-              {roster.bookings.length ? roster.bookings.map((item) => (
-                <p className="list-line" key={item.bookingId}>{item.studentName} <span>{item.rollNo}</span></p>
-              )) : <Empty text="No bookings." />}
-            </div>
-            <div>
-              <h3>Waitlist</h3>
-              {roster.waitlist.length ? roster.waitlist.map((item) => (
-                <p className="list-line" key={item.waitlistId}>#{item.position} {item.studentName}</p>
-              )) : <Empty text="No waitlist entries." />}
-            </div>
-          </div>
-          <div className="button-row" style={{ marginTop: "16px" }}>
-            <button type="button" className="button" onClick={() => setRoster(null)}>Close roster</button>
-          </div>
-        </Card>
-      )}
-
-      <ConfirmDialog
-        isOpen={Boolean(confirmDialog)}
-        title={confirmDialog?.title}
-        message={confirmDialog?.message}
-        confirmText={confirmDialog?.confirmText}
-        onCancel={() => setConfirmDialog(null)}
-        onConfirm={confirmDialog?.onConfirm}
-      />
-    </section>
-  );
-}
-
-function CreateSlot({ token, notify }) {
-  const [form, setForm] = useState({ slotDate: "", startTime: "", endTime: "", capacity: 1 }); const update = (key) => (e) => setForm({ ...form, [key]: e.target.value });
-  async function submit(e) { e.preventDefault(); try { await api("/api/professors/slots", { token, method: "POST", body: JSON.stringify({ ...form, capacity: Number(form.capacity) }) }); notify("New slot created.", "success"); setForm({ slotDate: "", startTime: "", endTime: "", capacity: 1 }); } catch (error) { notify(error.message, "error"); } }
-  return <section className="narrow"><PageHeading eyebrow="PROFESSOR DASHBOARD" title="Add a slot." subtitle="Create one future office-hour time window." /><form className="card form-stack" onSubmit={submit}><Field label="Date"><input type="date" value={form.slotDate} onChange={update("slotDate")} required /></Field><div className="two-column"><Field label="Start time"><input type="time" value={form.startTime} onChange={update("startTime")} required /></Field><Field label="End time"><input type="time" value={form.endTime} onChange={update("endTime")} required /></Field></div><Field label="Capacity"><input type="number" min="1" value={form.capacity} onChange={update("capacity")} required /></Field><button className="button button-dark">Create slot</button></form></section>;
-}
-
-function AdminOverview({ token, notify }) {
-  const [report, setReport] = useState(null);
-  const [bookingId, setBookingId] = useState("");
-  const [confirmDialog, setConfirmDialog] = useState(null);
-
-  useEffect(() => {
-    api("/api/admin/reports", { token }).then(setReport).catch((e) => notify(e.message, "error"));
-  }, [token, notify]);
-
-  const stats = report ? [
-    ["Total users", report.totalUsers],
-    ["Professors", report.totalProfessors],
-    ["Students", report.totalStudents],
-    ["Active bookings", report.totalActiveBookings],
-    ["Waitlisted", report.totalWaitlisted],
-    ["Utilization", `${report.slotUtilizationPercent.toFixed(1)}%`]
-  ] : [];
-
-  async function executeForceCancel() {
-    try {
-      await api(`/api/admin/bookings/${bookingId}`, { token, method: "DELETE" });
-      notify("Booking cancelled by admin.", "success");
-      setBookingId("");
-    } catch (e) {
-      notify(e.message, "error");
-    }
-  }
-
-  function handleForceCancelSubmit(event) {
-    event.preventDefault();
-    if (!bookingId) return;
-    setConfirmDialog({
-      title: `Force-cancel Booking #${bookingId}?`,
-      message: `This is an administrative override. It will immediately cancel Booking #${bookingId}, revoke the student's reservation, and trigger waitlist promotion if eligible.`,
-      confirmText: "Yes, force cancel",
-      onConfirm: () => {
-        setConfirmDialog(null);
-        executeForceCancel();
-      }
-    });
-  }
-
-  return (
-    <section>
-      <PageHeading eyebrow="ADMIN DASHBOARD" title="At a glance." subtitle="A compact view of activity across office hours." />
-      <div className="stat-grid">
-        {stats.map(([label, value]) => (
-          <div className="stat-card" key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </div>
-        ))}
-      </div>
-      <section className="card admin-action">
-        <h2>Force-cancel a booking</h2>
-        <form className="inline-form" onSubmit={handleForceCancelSubmit}>
-          <input
-            aria-label="Booking ID"
-            type="number"
-            min="1"
-            value={bookingId}
-            onChange={(e) => setBookingId(e.target.value)}
-            placeholder="Booking ID"
-            required
-          />
-          <button className="button button-dark">Cancel booking</button>
-        </form>
-      </section>
-
-      <ConfirmDialog
-        isOpen={Boolean(confirmDialog)}
-        title={confirmDialog?.title}
-        message={confirmDialog?.message}
-        confirmText={confirmDialog?.confirmText}
-        onCancel={() => setConfirmDialog(null)}
-        onConfirm={confirmDialog?.onConfirm}
-      />
-    </section>
-  );
-}
-
-function AdminUsers({ token, notify }) {
-  const [users, setUsers] = useState([]);
-  const [confirmDialog, setConfirmDialog] = useState(null);
-  const refresh = useCallback(() => api("/api/admin/users", { token }).then(setUsers).catch((e) => notify(e.message, "error")), [token, notify]);
-  useEffect(() => { refresh(); }, [refresh]);
-
-  async function setActive(user, action) {
-    try {
-      await api(`/api/admin/users/${user.id}/${action}`, { token, method: "PATCH" });
-      notify(`User ${action}d.`, "success");
-      refresh();
-    } catch (e) {
-      notify(e.message, "error");
-    }
-  }
-
-  function handleToggleUser(user) {
-    if (user.isActive) {
-      setConfirmDialog({
-        title: `Deactivate ${user.fullName}?`,
-        message: `This will deactivate ${user.fullName} (${user.email}). They will immediately lose access to sign in and book or manage office hours until reactivated.`,
-        confirmText: "Yes, deactivate user",
-        onConfirm: () => {
-          setConfirmDialog(null);
-          setActive(user, "deactivate");
-        }
-      });
-    } else {
-      setActive(user, "activate");
-    }
-  }
-
-  return (
-    <section>
-      <PageHeading eyebrow="ADMIN DASHBOARD" title="Manage users." subtitle="Activate or deactivate access to the booking system." />
-      <Card title="Users">
-        <Table headings={["Name", "Email", "Role", "Access", ""]}>
-          {users.map((user) => (
-            <tr key={user.id}>
-              <td>{user.fullName}</td>
-              <td>{user.email}</td>
-              <td><Badge value={user.role} /></td>
-              <td><Badge value={user.isActive ? "ACTIVE" : "INACTIVE"} /></td>
-              <td>
-                <button className="link-button" onClick={() => handleToggleUser(user)}>
-                  {user.isActive ? "Deactivate" : "Activate"}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </Table>
-      </Card>
-
-      <ConfirmDialog
-        isOpen={Boolean(confirmDialog)}
-        title={confirmDialog?.title}
-        message={confirmDialog?.message}
-        confirmText={confirmDialog?.confirmText}
-        onCancel={() => setConfirmDialog(null)}
-        onConfirm={confirmDialog?.onConfirm}
-      />
-    </section>
-  );
-}
-
-function PageHeading({ eyebrow, title, subtitle }) { return <div className="page-heading"><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="muted">{subtitle}</p></div>; }
-function Card({ title, children }) { return <section className="card"><h2>{title}</h2>{children}</section>; }
-function Empty({ text }) { return <p className="empty">{text}</p>; }
-function Table({ headings, children }) { return <div className="table-responsive"><table><thead><tr>{headings.map((heading) => <th key={heading}>{heading}</th>)}</tr></thead><tbody>{children}</tbody></table></div>; }
+import { AdminOverview } from "./features/admin/AdminOverview";
+import { AdminUsers } from "./features/admin/AdminUsers";
 
 function App() {
   const [session, setSession] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; }
+    try {
+      return JSON.parse(localStorage.getItem(SESSION_KEY));
+    } catch {
+      return null;
+    }
   });
-  const [notice, setNotice] = useState(null);
-  const role = session?.user?.role;
-  const defaultTab = role === "STUDENT" ? "book" : role === "PROFESSOR" ? "schedule" : "overview";
-  const [tab, setTab] = useState(defaultTab);
-  const notify = useCallback((message, kind = "success") => setNotice({ message, kind }), []);
 
+  const role = session?.user?.role;
+  const defaultTab =
+    role === "STUDENT" ? "book" : role === "PROFESSOR" ? "schedule" : "overview";
+  const [tab, setTab] = useState(defaultTab);
+
+  // Sync tab if role changes
+  useEffect(() => {
+    if (role === "STUDENT") setTab("book");
+    else if (role === "PROFESSOR") setTab("schedule");
+    else if (role === "ADMIN") setTab("overview");
+  }, [role]);
+
+  // Unified toast notifier using Sonner
+  const notify = useCallback((message, kind = "success") => {
+    if (kind === "error") {
+      toast.error(message);
+    } else if (kind === "warning") {
+      toast.warning(message);
+    } else if (kind === "info") {
+      toast.info(message);
+    } else {
+      toast.success(message);
+    }
+  }, []);
+
+  // Listen for session expiry event
   useEffect(() => {
     const handleExpired = () => {
       localStorage.removeItem(SESSION_KEY);
       setSession(null);
       notify("Your session has expired. Please sign in again.", "error");
     };
+
     window.addEventListener("ohs:session-expired", handleExpired);
     return () => window.removeEventListener("ohs:session-expired", handleExpired);
   }, [notify]);
 
+  // Validate and refresh active user session on startup
   useEffect(() => {
     if (session?.token) {
-      api("/api/auth/me", { token: session.token })
+      getMe(session.token)
         .then((user) => {
           const next = { ...session, user };
           localStorage.setItem(SESSION_KEY, JSON.stringify(next));
@@ -714,32 +84,72 @@ function App() {
   if (!session?.token) {
     return (
       <>
-        <Notice notice={notice} onDismiss={() => setNotice(null)} />
-        <AuthScreen onSession={setSession} />
+        <Toaster position="bottom-right" richColors theme="dark" />
+        <AuthScreen onSession={setSession} notify={notify} />
       </>
     );
   }
 
-  const logout = () => {
+  const handleLogout = () => {
     localStorage.removeItem(SESSION_KEY);
     setSession(null);
+    notify("Signed out successfully.", "info");
   };
 
-  let view = role === "STUDENT"
-    ? (tab === "bookings" ? <StudentBookings token={session.token} notify={notify} /> : tab === "profile" ? <StudentProfile token={session.token} notify={notify} /> : <StudentBooking token={session.token} notify={notify} />)
-    : role === "PROFESSOR"
-      ? (tab === "create" ? <CreateSlot token={session.token} notify={notify} /> : <ProfessorSchedule token={session.token} notify={notify} />)
-      : (tab === "users" ? <AdminUsers token={session.token} notify={notify} /> : <AdminOverview token={session.token} notify={notify} />);
+  // Determine current active view based on role and tab
+  let view = null;
+  if (role === "STUDENT") {
+    if (tab === "bookings") {
+      view = <StudentBookings token={session.token} notify={notify} />;
+    } else if (tab === "profile") {
+      view = <StudentProfile token={session.token} notify={notify} />;
+    } else {
+      view = <StudentBooking token={session.token} notify={notify} />;
+    }
+  } else if (role === "PROFESSOR") {
+    if (tab === "create") {
+      view = (
+        <CreateSlot
+          token={session.token}
+          notify={notify}
+          onSlotCreated={() => setTab("schedule")}
+          onCancel={() => setTab("schedule")}
+        />
+      );
+    } else {
+      view = (
+        <ProfessorSchedule
+          token={session.token}
+          notify={notify}
+          onGoToCreate={() => setTab("create")}
+        />
+      );
+    }
+  } else if (role === "ADMIN") {
+    if (tab === "users") {
+      view = <AdminUsers token={session.token} notify={notify} />;
+    } else {
+      view = <AdminOverview token={session.token} notify={notify} />;
+    }
+  }
 
   return (
     <>
-      <Header session={session} tab={tab} setTab={setTab} onLogout={logout} />
-      <main className="app-shell">
-        <Notice notice={notice} onDismiss={() => setNotice(null)} />
+      <Toaster position="bottom-right" richColors theme="dark" />
+      <Header
+        session={session}
+        tab={tab}
+        setTab={setTab}
+        onLogout={handleLogout}
+      />
+      <main className="app-shell" id="main-content">
         {view}
       </main>
     </>
   );
 }
 
-createRoot(document.getElementById("root")).render(<App />);
+const rootElement = document.getElementById("root");
+if (rootElement) {
+  createRoot(rootElement).render(<App />);
+}
