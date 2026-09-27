@@ -1,26 +1,27 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
-import { LogOut, Calendar, Clock, User, Shield, BarChart3, Users } from "lucide-react";
+import { LogOut, Calendar, Clock, User, BarChart3, Users } from "lucide-react";
 
-export function Header({ session, tab, setTab, onLogout }) {
+export function Header({ session, onLogout }) {
   const role = session?.user?.role;
 
-  const tabs =
+  const links =
     role === "STUDENT"
       ? [
-          { key: "book", label: "Book a slot", icon: Calendar },
-          { key: "bookings", label: "My bookings", icon: Clock },
-          { key: "profile", label: "Profile", icon: User },
+          { to: "/student/book", label: "Book a slot", icon: Calendar },
+          { to: "/student/bookings", label: "My bookings", icon: Clock },
+          { to: "/student/profile", label: "Profile", icon: User },
         ]
       : role === "PROFESSOR"
       ? [
-          { key: "schedule", label: "My schedule", icon: Calendar },
-          { key: "create", label: "Add a slot", icon: Clock },
+          { to: "/professor/schedule", label: "My schedule", icon: Calendar },
+          { to: "/professor/create-slot", label: "Add a slot", icon: Clock },
         ]
       : [
-          { key: "overview", label: "Overview", icon: BarChart3 },
-          { key: "users", label: "Users", icon: Users },
+          { to: "/admin/overview", label: "Overview", icon: BarChart3 },
+          { to: "/admin/users", label: "Users", icon: Users },
         ];
 
   return (
@@ -30,17 +31,15 @@ export function Header({ session, tab, setTab, onLogout }) {
       </div>
 
       <nav aria-label="Main Navigation">
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTab(key)}
-            className={`nav-link ${key === tab ? "active" : ""}`}
-            aria-current={key === tab ? "page" : undefined}
+        {links.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
           >
             <Icon size={16} aria-hidden="true" />
             <span>{label}</span>
-          </button>
+          </NavLink>
         ))}
       </nav>
 
