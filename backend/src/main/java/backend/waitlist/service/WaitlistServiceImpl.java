@@ -4,6 +4,7 @@ import backend.booking.model.Booking;
 import backend.booking.repository.BookingRepository;
 import backend.common.entity.User;
 import backend.common.enums.BookingStatus;
+import backend.common.enums.SlotStatus;
 import backend.common.enums.WaitlistStatus;
 import backend.common.repository.UserRepository;
 import backend.exception.ConflictException;
@@ -38,6 +39,7 @@ public class WaitlistServiceImpl implements WaitlistService {
     public WaitlistEntryResponse joinWaitlist(Long studentId, Long slotId) {
         if (waitlistRepository.existsByStudentIdAndSlotIdAndStatus(studentId, slotId, WaitlistStatus.WAITING)) throw new ConflictException("You are already on this slot's waitlist");
         Slot slot = slotRepository.findByIdForUpdate(slotId).orElseThrow(() -> new ResourceNotFoundException("Slot with id " + slotId + " not found"));
+        if (slot.getStatus() == SlotStatus.CANCELLED || slot.getStatus() == SlotStatus.COMPLETED) throw new ConflictException("This slot is no longer accepting waitlist entries");
         if (slot.getBookedCount() < slot.getCapacity()) throw new ConflictException("This slot has availability; create a booking instead");
         User student = userRepository.getReferenceById(studentId);
         int position = waitlistRepository.findBySlotIdAndStatus(slotId, WaitlistStatus.WAITING).stream().map(WaitlistEntry::getPosition).max(Integer::compareTo).orElse(0) + 1;
@@ -48,7 +50,7 @@ public class WaitlistServiceImpl implements WaitlistService {
     @Override @Transactional
     public void promoteNext(Long slotId) {
         Slot slot = slotRepository.findByIdForUpdate(slotId).orElseThrow(() -> new ResourceNotFoundException("Slot with id " + slotId + " not found"));
-        if (slot.getBookedCount() >= slot.getCapacity()) return;
+        if (slot.getStatus() == SlotStatus.CANCELLED || slot.getStatus() == SlotStatus.COMPLETED || slot.getBookedCount() >= slot.getCapacity()) return;
         waitlistRepository.findFirstBySlotIdAndStatusOrderByPositionAsc(slotId, WaitlistStatus.WAITING).ifPresent(entry -> {
             bookingRepository.save(Booking.builder().student(entry.getStudent()).slot(slot).status(BookingStatus.BOOKED).bookedAt(LocalDateTime.now()).build());
             slotService.incrementBookedCount(slotId);
