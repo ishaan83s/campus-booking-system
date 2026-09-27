@@ -116,7 +116,7 @@ export function AdminOverview({ token, notify }) {
 
           <form
             onSubmit={handleForceCancelSubmit}
-            style={{ display: "flex", gap: 12, maxWidth: 440 }}
+            className="admin-override-form"
           >
             <Input
               type="number"
