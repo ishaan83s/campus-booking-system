@@ -19,22 +19,20 @@ export function DialogOverlay({ className = "", ...props }) {
 export function DialogContent({ className = "", children, ...props }) {
   return (
     <DialogPortal>
-      <DialogOverlay>
-        <DialogPrimitive.Content
-          className={`dialog-content ${className}`.trim()}
-          onClick={(e) => e.stopPropagation()}
-          {...props}
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        className={`dialog-content ${className}`.trim()}
+        {...props}
+      >
+        {children}
+        <DialogPrimitive.Close
+          className="btn btn-ghost btn-sm"
+          style={{ position: "absolute", top: 16, right: 16, padding: 6, minHeight: "auto" }}
+          aria-label="Close dialog"
         >
-          {children}
-          <DialogPrimitive.Close
-            className="btn btn-ghost btn-sm"
-            style={{ position: "absolute", top: 16, right: 16, padding: 6, minHeight: "auto" }}
-            aria-label="Close dialog"
-          >
-            <X size={16} />
-          </DialogPrimitive.Close>
-        </DialogPrimitive.Content>
-      </DialogOverlay>
+          <X size={16} />
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
     </DialogPortal>
   );
 }
