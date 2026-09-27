@@ -39,4 +39,22 @@ public interface SlotRepository extends JpaRepository<Slot, Long> {
      * DataIntegrityViolationException to the client.
      */
     boolean existsByProfessorIdAndSlotDateAndStartTime(Long professorId, LocalDate slotDate, LocalTime startTime);
+
+    /**
+     * True time-range overlap check: two slots overlap when
+     * newStart &lt; existingEnd AND existingStart &lt; newEnd.
+     * Excludes CANCELLED slots and optionally a specific slot ID (for updates).
+     */
+    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM Slot s "
+            + "WHERE s.professor.id = :professorId "
+            + "AND s.slotDate = :slotDate "
+            + "AND s.startTime < :endTime "
+            + "AND s.endTime > :startTime "
+            + "AND s.status <> backend.common.enums.SlotStatus.CANCELLED "
+            + "AND (:excludeSlotId IS NULL OR s.id <> :excludeSlotId)")
+    boolean existsOverlappingSlot(@Param("professorId") Long professorId,
+                                  @Param("slotDate") LocalDate slotDate,
+                                  @Param("startTime") LocalTime startTime,
+                                  @Param("endTime") LocalTime endTime,
+                                  @Param("excludeSlotId") Long excludeSlotId);
 }
