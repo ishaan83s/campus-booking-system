@@ -26,7 +26,7 @@ export function ConfirmDialog({
         <DialogHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {confirmVariant === "danger" && (
-              <AlertTriangle size={22} className="badge-danger" style={{ padding: 2, borderRadius: 4 }} />
+              <AlertTriangle size={22} color="var(--danger-text)" aria-hidden="true" style={{ flexShrink: 0 }} />
             )}
             <DialogTitle>{title}</DialogTitle>
           </div>
