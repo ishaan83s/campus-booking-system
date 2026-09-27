@@ -12,6 +12,11 @@ target/
 
 # OS files
 .DS_Store
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+
 # Log file
 *.log
 
