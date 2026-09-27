@@ -98,7 +98,7 @@ export function AuthScreen({ onSession, notify }) {
 
         <form onSubmit={handleSubmit} className="form-stack">
           {error && (
-            <div className="form-error" role="alert">
+            <div className="form-error" id="auth-error-msg" role="alert">
               <AlertCircle size={16} aria-hidden="true" />
               <span>{error}</span>
             </div>
@@ -144,6 +144,8 @@ export function AuthScreen({ onSession, notify }) {
               placeholder="e.g. student@university.edu"
               autoComplete="email"
               spellCheck={false}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "auth-error-msg" : undefined}
             />
           </div>
 
@@ -158,6 +160,8 @@ export function AuthScreen({ onSession, notify }) {
               minLength="8"
               placeholder="Minimum 8 characters"
               autoComplete={mode === "login" ? "current-password" : "new-password"}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "auth-error-msg" : undefined}
             />
           </div>
 
