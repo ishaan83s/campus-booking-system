@@ -1,4 +1,5 @@
 @import "./design-tokens.css";
+@import "react-day-picker/style.css";
 
 /* Base & Reset */
 *, *::before, *::after {
@@ -634,21 +635,23 @@ tbody tr:hover {
   z-index: 50;
   background-color: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(4px);
-  display: grid;
-  place-items: center;
-  padding: var(--space-4);
-  overflow-y: auto;
 }
 
 .dialog-content {
-  width: 100%;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 51;
+  width: calc(100% - 32px);
   max-width: 480px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
   padding: var(--space-6);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-xl);
   background-color: var(--bg-surface-elevated);
   box-shadow: var(--shadow-dialog);
-  position: relative;
 }
 
 .dialog-header {
@@ -816,6 +819,18 @@ tbody tr:hover {
 }
 
 @media (max-width: 640px) {
+  .account-area .account-name {
+    display: none;
+  }
+  .account-area .badge {
+    display: none;
+  }
+  .account-area .btn span {
+    display: none;
+  }
+  .account-area {
+    gap: var(--space-2);
+  }
   .slot-row {
     flex-direction: column;
     align-items: flex-start;
