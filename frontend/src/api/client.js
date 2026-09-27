@@ -1,6 +1,15 @@
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 export const SESSION_KEY = "ohs.session";
 
+export class ApiError extends Error {
+  constructor(message, status, body = null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
 export async function api(path, { token, ...options } = {}) {
   const headers = {
     ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -20,11 +29,11 @@ export async function api(path, { token, ...options } = {}) {
   if (response.status === 401 && !path.startsWith("/api/auth/login")) {
     localStorage.removeItem(SESSION_KEY);
     window.dispatchEvent(new CustomEvent("ohs:session-expired"));
-    throw new Error("Your session has expired. Please sign in again.");
+    throw new ApiError("Your session has expired. Please sign in again.", 401, body);
   }
 
   if (!response.ok) {
-    throw new Error(body?.message ?? `Request failed (${response.status})`);
+    throw new ApiError(body?.message ?? `Request failed (${response.status})`, response.status, body);
   }
 
   return body;
