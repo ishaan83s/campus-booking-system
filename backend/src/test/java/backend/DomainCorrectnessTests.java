@@ -14,6 +14,8 @@ import backend.common.enums.SlotStatus;
 import backend.common.enums.WaitlistStatus;
 import backend.common.repository.UserRepository;
 import backend.auth.service.AuthService;
+import backend.admin.service.AdminService;
+import backend.exception.ForbiddenOperationException;
 import backend.professor.dto.SlotRequest;
 import backend.professor.dto.SlotResponse;
 import backend.professor.exception.SlotOverlapException;
@@ -52,6 +54,7 @@ class DomainCorrectnessTests {
     @Autowired SlotService slotService;
     @Autowired BookingService bookingService;
     @Autowired backend.waitlist.service.WaitlistService waitlistService;
+    @Autowired AdminService adminService;
     @Autowired AuthService authService;
     @Autowired PasswordEncoder passwordEncoder;
 
@@ -456,6 +459,54 @@ class DomainCorrectnessTests {
             List<Booking> s2Bookings = bookingRepository.findByStudentId(s2.getId());
             boolean hasBooked = s2Bookings.stream().anyMatch(b -> b.getStatus() == BookingStatus.BOOKED);
             assertTrue(hasBooked, "Student 2 should be promoted from waitlist to confirmed booking");
+        }
+    }
+
+    @Nested
+    @DisplayName("Admin Safety Tests")
+    class AdminSafetyTests {
+
+        @Test
+        @DisplayName("Admin cannot deactivate their own account")
+        void adminCannotDeactivateSelf() {
+            User admin = new User();
+            admin.setFullName("Admin User");
+            admin.setEmail("admin-safety@test.edu");
+            admin.setPassword(passwordEncoder.encode("password123"));
+            admin.setRole(Role.ADMIN);
+            admin.setActive(true);
+            admin = userRepository.save(admin);
+
+            final Long adminId = admin.getId();
+            ForbiddenOperationException ex = assertThrows(ForbiddenOperationException.class, () ->
+                    adminService.deactivateUser(adminId, adminId),
+                    "Admin should not be permitted to deactivate their own account");
+
+            assertTrue(ex.getMessage().contains("cannot deactivate their own account"));
+
+            // Verify admin is still active
+            User reloaded = userRepository.findById(adminId).orElseThrow();
+            assertTrue(reloaded.isActive(), "Admin account must remain active");
+        }
+
+        @Test
+        @DisplayName("Admin can deactivate another user")
+        void adminCanDeactivateOtherUser() {
+            User admin = new User();
+            admin.setFullName("Admin User 2");
+            admin.setEmail("admin-safety2@test.edu");
+            admin.setPassword(passwordEncoder.encode("password123"));
+            admin.setRole(Role.ADMIN);
+            admin.setActive(true);
+            admin = userRepository.save(admin);
+
+            User target = createStudent("target-deactivate@test.edu", "ROLL-TARG");
+            assertTrue(target.isActive());
+
+            adminService.deactivateUser(admin.getId(), target.getId());
+
+            User reloadedTarget = userRepository.findById(target.getId()).orElseThrow();
+            assertFalse(reloadedTarget.isActive(), "Target user must be deactivated");
         }
     }
 }
