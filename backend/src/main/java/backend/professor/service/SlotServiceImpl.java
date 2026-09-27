@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -57,11 +58,11 @@ public class SlotServiceImpl implements SlotService {
     public SlotResponse createSlot(Long professorId, SlotRequest request) {
         validateTimeOrder(request);
 
-        if (slotRepository.existsByProfessorIdAndSlotDateAndStartTime(
-                professorId, request.getSlotDate(), request.getStartTime())) {
+        if (slotRepository.existsOverlappingSlot(
+                professorId, request.getSlotDate(),
+                request.getStartTime(), request.getEndTime(), null)) {
             throw new SlotOverlapException(
-                    "You already have a slot starting at " + request.getStartTime()
-                            + " on " + request.getSlotDate());
+                    "This slot overlaps with an existing slot on " + request.getSlotDate());
         }
 
         User professor = userRepository.findById(professorId)
@@ -106,13 +107,14 @@ public class SlotServiceImpl implements SlotService {
             }
         } else {
             validateTimeOrder(request);
-            boolean movingToNewStartTime = !slot.getStartTime().equals(request.getStartTime())
-                    || !slot.getSlotDate().equals(request.getSlotDate());
-            if (movingToNewStartTime && slotRepository.existsByProfessorIdAndSlotDateAndStartTime(
-                    professorId, request.getSlotDate(), request.getStartTime())) {
+            boolean dateTimeChanged = !slot.getSlotDate().equals(request.getSlotDate())
+                    || !slot.getStartTime().equals(request.getStartTime())
+                    || !slot.getEndTime().equals(request.getEndTime());
+            if (dateTimeChanged && slotRepository.existsOverlappingSlot(
+                    professorId, request.getSlotDate(),
+                    request.getStartTime(), request.getEndTime(), slotId)) {
                 throw new SlotOverlapException(
-                        "You already have a slot starting at " + request.getStartTime()
-                                + " on " + request.getSlotDate());
+                        "This slot overlaps with an existing slot on " + request.getSlotDate());
             }
             slot.setSlotDate(request.getSlotDate());
             slot.setStartTime(request.getStartTime());
@@ -142,11 +144,21 @@ public class SlotServiceImpl implements SlotService {
         // preserved (a stated requirement).
         slot.setStatus(SlotStatus.CANCELLED);
         slotRepository.save(slot);
-        // NOTE: notifying affected students on cancellation (main spec
-        // Section 3.2, "If active bookings exist, all affected students
-        // should be notified") is triggered from booking/, the owning
-        // module of the affected Booking rows - professor/ only owns the
-        // Slot row itself and does not call NotificationService directly.
+
+        // Cascade: cancel all active bookings for this slot so students
+        // don't see a BOOKED record against a CANCELLED slot.
+        List<Booking> activeBookings = bookingRepository.findBySlotIdAndStatus(slotId, BookingStatus.BOOKED);
+        LocalDateTime now = LocalDateTime.now();
+        for (Booking booking : activeBookings) {
+            booking.setStatus(BookingStatus.CANCELLED);
+            booking.setCancelledAt(now);
+        }
+
+        // Cascade: cancel all waiting waitlist entries for this slot.
+        List<WaitlistEntry> waitingEntries = waitlistEntryRepository.findBySlotIdAndStatus(slotId, WaitlistStatus.WAITING);
+        for (WaitlistEntry entry : waitingEntries) {
+            entry.setStatus(WaitlistStatus.CANCELLED);
+        }
     }
 
     @Override
