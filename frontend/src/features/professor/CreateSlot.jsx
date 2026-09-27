@@ -74,7 +74,7 @@ export function CreateSlot({ token, notify, onSlotCreated, onCancel }) {
         <CardContent>
           <form className="form-stack" onSubmit={handleSubmit}>
             {error && (
-              <div className="form-error" role="alert">
+              <div className="form-error" id="create-slot-error" role="alert">
                 <span>{error}</span>
               </div>
             )}
@@ -87,6 +87,8 @@ export function CreateSlot({ token, notify, onSlotCreated, onCancel }) {
                 value={form.slotDate}
                 onChange={update("slotDate")}
                 required
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? "create-slot-error" : undefined}
               />
             </div>
 
@@ -99,6 +101,8 @@ export function CreateSlot({ token, notify, onSlotCreated, onCancel }) {
                   value={form.startTime}
                   onChange={update("startTime")}
                   required
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? "create-slot-error" : undefined}
                 />
               </div>
 
@@ -110,6 +114,8 @@ export function CreateSlot({ token, notify, onSlotCreated, onCancel }) {
                   value={form.endTime}
                   onChange={update("endTime")}
                   required
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? "create-slot-error" : undefined}
                 />
               </div>
             </div>
@@ -123,6 +129,8 @@ export function CreateSlot({ token, notify, onSlotCreated, onCancel }) {
                 value={form.capacity}
                 onChange={update("capacity")}
                 required
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? "create-slot-error" : undefined}
               />
               <p className="helper">
                 Once booked to capacity, additional students will join the waitlist queue.
