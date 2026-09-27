@@ -171,7 +171,7 @@ export function StudentBooking({ token, notify }) {
                   },
                 }}
                 modifiersStyles={{
-                  hasSlots: { fontWeight: 700, textDecoration: "underline" },
+                  hasSlots: { fontWeight: 700, color: "var(--primary)" },
                 }}
               />
             </div>
@@ -264,7 +264,13 @@ export function StudentBooking({ token, notify }) {
         {/* Selected Slot Side Panel */}
         <aside
           ref={sideCardRef}
-          className={`side-card ${selectedSlot ? "side-card-active" : ""}`}
+          className={`side-card ${
+            selectedSlot
+              ? selectedSlot.status === "FULL"
+                ? "side-card-waitlist"
+                : "side-card-active"
+              : ""
+          }`}
         >
           <span className="eyebrow" style={{ color: selectedSlot?.status === "FULL" ? "var(--warning-text)" : "var(--primary)" }}>
             {selectedSlot?.status === "FULL" ? "WAITLIST RESERVATION" : "SELECTED OFFICE HOUR"}
