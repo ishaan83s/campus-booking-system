@@ -11,4 +11,5 @@ public interface WaitlistEntryRepository extends JpaRepository<WaitlistEntry, Lo
     List<WaitlistEntry> findBySlotIdAndStatus(Long slotId, WaitlistStatus status);
     List<WaitlistEntry> findByStudentIdAndStatus(Long studentId, WaitlistStatus status);
     boolean existsByStudentIdAndSlotIdAndStatus(Long studentId, Long slotId, WaitlistStatus status);
+    Optional<WaitlistEntry> findByStudentIdAndSlotId(Long studentId, Long slotId);
 }
