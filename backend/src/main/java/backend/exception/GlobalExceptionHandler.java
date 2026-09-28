@@ -14,8 +14,8 @@ import java.time.LocalDateTime;
 public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     ResponseEntity<ErrorResponse> notFound(ResourceNotFoundException ex, HttpServletRequest request) { return error(HttpStatus.NOT_FOUND, ex, request); }
-    @ExceptionHandler({ConflictException.class, backend.professor.exception.SlotOverlapException.class})
-    ResponseEntity<ErrorResponse> conflict(RuntimeException ex, HttpServletRequest request) { return error(HttpStatus.CONFLICT, ex, request); }
+    @ExceptionHandler({ConflictException.class, backend.professor.exception.SlotOverlapException.class, org.springframework.dao.DataIntegrityViolationException.class})
+    ResponseEntity<ErrorResponse> conflict(Exception ex, HttpServletRequest request) { return error(HttpStatus.CONFLICT, ex, request); }
     @ExceptionHandler({ForbiddenOperationException.class, backend.professor.exception.SlotNotOwnedException.class})
     ResponseEntity<ErrorResponse> forbidden(RuntimeException ex, HttpServletRequest request) { return error(HttpStatus.FORBIDDEN, ex, request); }
     @ExceptionHandler(ResponseStatusException.class)
