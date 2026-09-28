@@ -8,4 +8,5 @@ public interface WaitlistService {
     void promoteNext(Long slotId);
     void leaveWaitlist(Long studentId, Long waitlistId);
     List<WaitlistEntryResponse> getActiveEntriesForStudent(Long studentId);
+    boolean isStudentWaiting(Long studentId, Long slotId);
 }
