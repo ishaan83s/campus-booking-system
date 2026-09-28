@@ -85,6 +85,9 @@ public class BookingServiceImpl implements BookingService {
         if (bookingRepository.existsByStudentIdAndSlotIdAndStatus(studentId, slot.getId(), BookingStatus.BOOKED)) {
             throw new ConflictException("You already have an active booking for this slot");
         }
+        if (waitlistService.isStudentWaiting(studentId, slot.getId())) {
+            throw new ConflictException("You are already on this slot's waitlist");
+        }
 
         // Step 4: room available -> confirm the booking.
         if (slot.getBookedCount() < slot.getCapacity()) {
