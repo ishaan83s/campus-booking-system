@@ -37,10 +37,28 @@ public class WaitlistServiceImpl implements WaitlistService {
 
     @Override @Transactional
     public WaitlistEntryResponse joinWaitlist(Long studentId, Long slotId) {
-        if (waitlistRepository.existsByStudentIdAndSlotIdAndStatus(studentId, slotId, WaitlistStatus.WAITING)) throw new ConflictException("You are already on this slot's waitlist");
         Slot slot = slotRepository.findByIdForUpdate(slotId).orElseThrow(() -> new ResourceNotFoundException("Slot with id " + slotId + " not found"));
         if (slot.getStatus() == SlotStatus.CANCELLED || slot.getStatus() == SlotStatus.COMPLETED) throw new ConflictException("This slot is no longer accepting waitlist entries");
         if (slot.getBookedCount() < slot.getCapacity()) throw new ConflictException("This slot has availability; create a booking instead");
+        if (bookingRepository.existsByStudentIdAndSlotIdAndStatus(studentId, slotId, BookingStatus.BOOKED)) {
+            throw new ConflictException("You already have an active booking for this slot");
+        }
+
+        var existingOpt = waitlistRepository.findByStudentIdAndSlotId(studentId, slotId);
+        if (existingOpt.isPresent()) {
+            WaitlistEntry existing = existingOpt.get();
+            if (existing.getStatus() == WaitlistStatus.WAITING) {
+                throw new ConflictException("You are already on this slot's waitlist");
+            }
+            int position = waitlistRepository.findBySlotIdAndStatus(slotId, WaitlistStatus.WAITING).stream()
+                    .map(WaitlistEntry::getPosition).max(Integer::compareTo).orElse(0) + 1;
+            existing.setStatus(WaitlistStatus.WAITING);
+            existing.setPosition(position);
+            existing.setPromotedAt(null);
+            WaitlistEntry saved = waitlistRepository.save(existing);
+            return toResponse(saved);
+        }
+
         User student = userRepository.getReferenceById(studentId);
         int position = waitlistRepository.findBySlotIdAndStatus(slotId, WaitlistStatus.WAITING).stream().map(WaitlistEntry::getPosition).max(Integer::compareTo).orElse(0) + 1;
         WaitlistEntry saved = waitlistRepository.save(WaitlistEntry.builder().student(student).slot(slot).position(position).status(WaitlistStatus.WAITING).build());
@@ -51,13 +69,32 @@ public class WaitlistServiceImpl implements WaitlistService {
     public void promoteNext(Long slotId) {
         Slot slot = slotRepository.findByIdForUpdate(slotId).orElseThrow(() -> new ResourceNotFoundException("Slot with id " + slotId + " not found"));
         if (slot.getStatus() == SlotStatus.CANCELLED || slot.getStatus() == SlotStatus.COMPLETED || slot.getBookedCount() >= slot.getCapacity()) return;
-        waitlistRepository.findFirstBySlotIdAndStatusOrderByPositionAsc(slotId, WaitlistStatus.WAITING).ifPresent(entry -> {
+
+        while (slot.getBookedCount() < slot.getCapacity()) {
+            var nextEntryOpt = waitlistRepository.findFirstBySlotIdAndStatusOrderByPositionAsc(slotId, WaitlistStatus.WAITING);
+            if (nextEntryOpt.isEmpty()) break;
+            WaitlistEntry entry = nextEntryOpt.get();
+
+            if (bookingRepository.existsByStudentIdAndSlotIdAndStatus(entry.getStudent().getId(), slotId, BookingStatus.BOOKED)) {
+                entry.setStatus(WaitlistStatus.CANCELLED);
+                waitlistRepository.save(entry);
+                resequence(slotId);
+                continue;
+            }
+
             bookingRepository.save(Booking.builder().student(entry.getStudent()).slot(slot).status(BookingStatus.BOOKED).bookedAt(LocalDateTime.now()).build());
             slotService.incrementBookedCount(slotId);
-            entry.setStatus(WaitlistStatus.PROMOTED); entry.setPromotedAt(LocalDateTime.now());
+            entry.setStatus(WaitlistStatus.PROMOTED);
+            entry.setPromotedAt(LocalDateTime.now());
+            waitlistRepository.save(entry);
             resequence(slotId);
             notificationService.sendWaitlistPromoted(NotificationPayload.builder().recipientUserId(entry.getStudent().getId()).slotId(slotId).type("WAITLIST_PROMOTED").message("A seat is now confirmed for your waitlisted slot.").build());
-        });
+        }
+    }
+
+    @Override @Transactional(readOnly = true)
+    public boolean isStudentWaiting(Long studentId, Long slotId) {
+        return waitlistRepository.existsByStudentIdAndSlotIdAndStatus(studentId, slotId, WaitlistStatus.WAITING);
     }
 
     @Override @Transactional
