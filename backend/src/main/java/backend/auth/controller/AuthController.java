@@ -13,5 +13,11 @@ public class AuthController {
     private final AuthService authService;
     @PostMapping("/register") public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) { return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request)); }
     @PostMapping("/login") public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) { return ResponseEntity.ok(authService.login(request)); }
-    @GetMapping("/me") public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserPrincipal principal) { return ResponseEntity.ok(authService.getCurrentUser(principal.getId())); }
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserPrincipal principal) {
+        if (principal == null || principal.getId() == null) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Unauthenticated");
+        }
+        return ResponseEntity.ok(authService.getCurrentUser(principal.getId()));
+    }
 }
