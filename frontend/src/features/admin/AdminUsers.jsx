@@ -11,7 +11,7 @@ import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { Empty } from "../../components/ui/Empty";
 import { Users, Search, ShieldCheck, ShieldAlert } from "lucide-react";
 
-export function AdminUsers({ token, notify }) {
+export function AdminUsers({ token, currentUser, notify }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,6 +47,10 @@ export function AdminUsers({ token, notify }) {
 
   function handleActionClick(user) {
     if (user.isActive) {
+      if (currentUser && ((currentUser.id != null && user.id === currentUser.id) || (currentUser.email && user.email === currentUser.email))) {
+        notify("Administrators cannot deactivate their own account.", "error");
+        return;
+      }
       setConfirmDialog({
         title: `Deactivate ${user.fullName}?`,
         message: `This will suspend access for ${user.fullName} (${user.email}). They will immediately be prevented from signing in, booking slots, or managing office hours until reactivated.`,
@@ -140,35 +144,46 @@ export function AdminUsers({ token, notify }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <strong style={{ display: "block" }}>{user.fullName}</strong>
-                      <span className="muted" style={{ fontSize: 13 }}>
-                        {user.email}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge value={user.role} />
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        value={user.isActive ? "ACTIVE" : "INACTIVE"}
-                        variant={user.isActive ? "success" : "danger"}
-                      />
-                    </TableCell>
-                    <TableCell style={{ textAlign: "right" }}>
-                      <Button
-                        variant={user.isActive ? "danger" : "secondary"}
-                        size="sm"
-                        onClick={() => handleActionClick(user)}
-                        disabled={actionLoading}
-                      >
-                        {user.isActive ? "Deactivate" : "Activate"}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredUsers.map((user) => {
+                  const isSelf = Boolean(
+                    currentUser &&
+                      ((currentUser.id != null && user.id === currentUser.id) ||
+                        (currentUser.email && user.email === currentUser.email))
+                  );
+                  return (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <strong>{user.fullName}</strong>
+                          {isSelf && <Badge value="YOU" variant="info" />}
+                        </div>
+                        <span className="muted" style={{ fontSize: 13 }}>
+                          {user.email}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge value={user.role} />
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          value={user.isActive ? "ACTIVE" : "INACTIVE"}
+                          variant={user.isActive ? "success" : "danger"}
+                        />
+                      </TableCell>
+                      <TableCell style={{ textAlign: "right" }}>
+                        <Button
+                          variant={user.isActive ? "danger" : "secondary"}
+                          size="sm"
+                          onClick={() => handleActionClick(user)}
+                          disabled={actionLoading || (isSelf && user.isActive)}
+                          title={isSelf && user.isActive ? "Administrators cannot deactivate their own account" : undefined}
+                        >
+                          {user.isActive ? "Deactivate" : "Activate"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
