@@ -33,7 +33,8 @@ public interface ProfessorProfileRepository extends JpaRepository<ProfessorProfi
      * Either filter may be null (no filter applied).
      */
     @Query("SELECT pp FROM ProfessorProfile pp JOIN pp.user u "
-            + "WHERE (:department IS NULL OR LOWER(pp.department) = LOWER(:department)) "
+            + "WHERE u.active = true "
+            + "AND (:department IS NULL OR LOWER(pp.department) = LOWER(:department)) "
             + "AND (:name IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :name, '%')))")
     Page<ProfessorProfile> search(@Param("department") String department,
                                   @Param("name") String name,
