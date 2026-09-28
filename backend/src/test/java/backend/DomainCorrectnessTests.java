@@ -24,13 +24,20 @@ import backend.professor.repository.SlotRepository;
 import backend.professor.service.SlotService;
 import backend.waitlist.model.WaitlistEntry;
 import backend.waitlist.repository.WaitlistEntryRepository;
+import backend.exception.ConflictException;
+import backend.professor.model.ProfessorProfile;
+import backend.security.UserPrincipal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -38,15 +45,20 @@ import java.time.LocalTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Regression tests for confirmed domain defects from the backend correctness audit.
  * All tests run against H2 in-memory database with create-drop DDL.
  */
 @SpringBootTest
+@AutoConfigureMockMvc
 @Transactional
 class DomainCorrectnessTests {
 
+    @Autowired MockMvc mockMvc;
     @Autowired UserRepository userRepository;
     @Autowired SlotRepository slotRepository;
     @Autowired BookingRepository bookingRepository;
@@ -57,6 +69,9 @@ class DomainCorrectnessTests {
     @Autowired AdminService adminService;
     @Autowired AuthService authService;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired backend.professor.repository.ProfessorProfileRepository professorProfileRepository;
+    @Autowired backend.auth.controller.AuthController authController;
+    @Autowired backend.security.JwtTokenProvider jwtTokenProvider;
 
     private User professor;
     private User student1;
@@ -507,6 +522,259 @@ class DomainCorrectnessTests {
 
             User reloadedTarget = userRepository.findById(target.getId()).orElseThrow();
             assertFalse(reloadedTarget.isActive(), "Target user must be deactivated");
+        }
+    }
+
+    // ========================
+    // Finding P1-2 & P1-3: Waitlist Rejoin and Promotion Invariants
+    // ========================
+
+    @Nested
+    @DisplayName("Finding P1-2 & P1-3: Waitlist Rejoin and Promotion Invariants")
+    class WaitlistRejoinAndPromotionTests {
+
+        @Test
+        @DisplayName("Student who leaves waitlist can rejoin without duplicate key constraint conflict")
+        void rejoinWaitlistReusesCancelledEntry() {
+            SlotRequest slotReq = new SlotRequest(
+                    FUTURE_DATE,
+                    LocalTime.of(10, 0),
+                    LocalTime.of(11, 0),
+                    1
+            );
+            SlotResponse slot = slotService.createSlot(professor.getId(), slotReq);
+            Long slotId = slot.getSlotId();
+
+            User s1 = createStudent("s1-waitlist@test.edu", "ROLL-W1");
+            User s2 = createStudent("s2-waitlist@test.edu", "ROLL-W2");
+
+            // Student 1 books the slot (slot becomes FULL)
+            bookingService.createBooking(s1.getId(), new BookingRequest(slotId));
+
+            // Student 2 joins waitlist (WAITING, position 1)
+            var joinResp1 = waitlistService.joinWaitlist(s2.getId(), slotId);
+            assertEquals(WaitlistStatus.WAITING, joinResp1.getStatus());
+            assertEquals(1, joinResp1.getPosition());
+
+            // Student 2 leaves waitlist (CANCELLED)
+            waitlistService.leaveWaitlist(s2.getId(), joinResp1.getWaitlistId());
+            var entryAfterCancel = waitlistEntryRepository.findByStudentIdAndSlotId(s2.getId(), slotId).orElseThrow();
+            assertEquals(WaitlistStatus.CANCELLED, entryAfterCancel.getStatus());
+
+            // Student 2 rejoins waitlist (WAITING -> CANCELLED -> WAITING)
+            var joinResp2 = waitlistService.joinWaitlist(s2.getId(), slotId);
+            assertEquals(WaitlistStatus.WAITING, joinResp2.getStatus(), "Status should be restored to WAITING");
+            assertEquals(1, joinResp2.getPosition(), "Queue position should be assigned properly");
+
+            // Verify only 1 entry exists for this student+slot and status is WAITING
+            var allWaiting = waitlistEntryRepository.findBySlotIdAndStatus(slotId, WaitlistStatus.WAITING);
+            assertEquals(1, allWaiting.size(), "Should have exactly 1 active waiting entry");
+            assertEquals(s2.getId(), allWaiting.get(0).getStudent().getId());
+        }
+
+        @Test
+        @DisplayName("Active waiting student cannot join waitlist a second time")
+        void activeWaitlistCannotRejoinTwice() {
+            SlotRequest slotReq = new SlotRequest(FUTURE_DATE, LocalTime.of(11, 0), LocalTime.of(12, 0), 1);
+            SlotResponse slot = slotService.createSlot(professor.getId(), slotReq);
+            Long slotId = slot.getSlotId();
+
+            User s1 = createStudent("s1-dup@test.edu", "ROLL-D1");
+            User s2 = createStudent("s2-dup@test.edu", "ROLL-D2");
+
+            bookingService.createBooking(s1.getId(), new BookingRequest(slotId));
+            waitlistService.joinWaitlist(s2.getId(), slotId);
+
+            // Attempting to join again while already WAITING throws ConflictException
+            assertThrows(ConflictException.class, () -> waitlistService.joinWaitlist(s2.getId(), slotId));
+        }
+
+        @Test
+        @DisplayName("Capacity expansion automatically promotes waitlisted student and updates status")
+        void capacityExpansionPromotesWaitlistedStudent() {
+            SlotRequest slotReq = new SlotRequest(FUTURE_DATE, LocalTime.of(14, 0), LocalTime.of(15, 0), 1);
+            SlotResponse slot = slotService.createSlot(professor.getId(), slotReq);
+            Long slotId = slot.getSlotId();
+
+            User s1 = createStudent("s1-promo@test.edu", "ROLL-P1");
+            User s2 = createStudent("s2-promo@test.edu", "ROLL-P2");
+
+            bookingService.createBooking(s1.getId(), new BookingRequest(slotId));
+            waitlistService.joinWaitlist(s2.getId(), slotId);
+
+            // Professor expands capacity from 1 to 2
+            SlotRequest updateReq = new SlotRequest(FUTURE_DATE, LocalTime.of(14, 0), LocalTime.of(15, 0), 2);
+            slotService.updateSlot(professor.getId(), slotId, updateReq);
+
+            // Verify student 2 was promoted
+            var s2Bookings = bookingRepository.findByStudentId(s2.getId());
+            assertEquals(1, s2Bookings.size(), "Student 2 should have exactly one booking");
+            assertEquals(BookingStatus.BOOKED, s2Bookings.get(0).getStatus());
+
+            // Verify waitlist entry is updated to PROMOTED
+            var s2Waitlist = waitlistEntryRepository.findByStudentIdAndSlotId(s2.getId(), slotId).orElseThrow();
+            assertEquals(WaitlistStatus.PROMOTED, s2Waitlist.getStatus(), "Waitlist status must be PROMOTED, not WAITING");
+
+            // Verify slot booked count is 2
+            Slot updatedSlot = slotRepository.findById(slotId).orElseThrow();
+            assertEquals(2, updatedSlot.getBookedCount());
+            assertEquals(2, updatedSlot.getCapacity());
+        }
+
+        @Test
+        @DisplayName("Waitlisted student cannot directly book slot bypassing the waitlist queue")
+        void waitlistedStudentCannotDirectlyBook() {
+            SlotRequest slotReq = new SlotRequest(FUTURE_DATE, LocalTime.of(16, 0), LocalTime.of(17, 0), 1);
+            SlotResponse slot = slotService.createSlot(professor.getId(), slotReq);
+            Long slotId = slot.getSlotId();
+
+            User s1 = createStudent("s1-bypass@test.edu", "ROLL-B1");
+            User s2 = createStudent("s2-bypass@test.edu", "ROLL-B2");
+
+            bookingService.createBooking(s1.getId(), new BookingRequest(slotId));
+            waitlistService.joinWaitlist(s2.getId(), slotId);
+
+            ConflictException ex = assertThrows(ConflictException.class, () ->
+                    bookingService.createBooking(s2.getId(), new BookingRequest(slotId)));
+            assertTrue(ex.getMessage().toLowerCase().contains("already on"));
+        }
+    }
+
+    // ========================
+    // Finding P2-1: Capacity Decrease Validation
+    // ========================
+
+    @Nested
+    @DisplayName("Finding P2-1: Capacity Decrease Validation")
+    class CapacityDecreaseValidationTests {
+
+        @Test
+        @DisplayName("Capacity decrease below currently booked count is rejected")
+        void capacityDecreaseBelowBookedCountRejected() {
+            SlotRequest slotReq = new SlotRequest(FUTURE_DATE, LocalTime.of(12, 0), LocalTime.of(13, 0), 3);
+            SlotResponse slot = slotService.createSlot(professor.getId(), slotReq);
+            Long slotId = slot.getSlotId();
+
+            User s1 = createStudent("s1-cap@test.edu", "ROLL-C1");
+            User s2 = createStudent("s2-cap@test.edu", "ROLL-C2");
+
+            bookingService.createBooking(s1.getId(), new BookingRequest(slotId));
+            bookingService.createBooking(s2.getId(), new BookingRequest(slotId));
+
+            // Booked count is 2. Attempting to reduce capacity to 1 must fail.
+            SlotRequest reduceReq = new SlotRequest(FUTURE_DATE, LocalTime.of(12, 0), LocalTime.of(13, 0), 1);
+            SlotOverlapException ex = assertThrows(SlotOverlapException.class, () ->
+                    slotService.updateSlot(professor.getId(), slotId, reduceReq));
+            assertTrue(ex.getMessage().contains("cannot be decreased below the current booked count"));
+        }
+
+        @Test
+        @DisplayName("Capacity decrease down to currently booked count is allowed")
+        void capacityDecreaseAboveOrEqualBookedCountAllowed() {
+            SlotRequest slotReq = new SlotRequest(FUTURE_DATE, LocalTime.of(13, 0), LocalTime.of(14, 0), 3);
+            SlotResponse slot = slotService.createSlot(professor.getId(), slotReq);
+            Long slotId = slot.getSlotId();
+
+            User s1 = createStudent("s1-capok@test.edu", "ROLL-COK");
+            bookingService.createBooking(s1.getId(), new BookingRequest(slotId));
+
+            // Booked count is 1. Reducing capacity to 2 is valid.
+            SlotRequest reduceReq = new SlotRequest(FUTURE_DATE, LocalTime.of(13, 0), LocalTime.of(14, 0), 2);
+            SlotResponse updated = slotService.updateSlot(professor.getId(), slotId, reduceReq);
+            assertEquals(2, updated.getCapacity());
+        }
+    }
+
+    // ========================
+    // Finding P2-2: Inactive Professor Exclusion
+    // ========================
+
+    @Nested
+    @DisplayName("Finding P2-2: Inactive Professor Exclusion")
+    class ProfessorSearchActiveFilteringTests {
+
+        @Test
+        @DisplayName("Professor search excludes deactivated faculty")
+        void searchExcludesInactiveProfessors() {
+            User activeProf = new User();
+            activeProf.setFullName("Dr. Active Professor");
+            activeProf.setEmail("prof-active@test.edu");
+            activeProf.setPassword(passwordEncoder.encode("password123"));
+            activeProf.setRole(Role.PROFESSOR);
+            activeProf.setActive(true);
+            User savedActive = userRepository.save(activeProf);
+
+            ProfessorProfile activeProfile = new ProfessorProfile();
+            activeProfile.setUser(savedActive);
+            activeProfile.setDepartment("Mathematics");
+            professorProfileRepository.save(activeProfile);
+
+            User inactiveProf = new User();
+            inactiveProf.setFullName("Dr. Inactive Professor");
+            inactiveProf.setEmail("prof-inactive@test.edu");
+            inactiveProf.setPassword(passwordEncoder.encode("password123"));
+            inactiveProf.setRole(Role.PROFESSOR);
+            inactiveProf.setActive(false);
+            User savedInactive = userRepository.save(inactiveProf);
+
+            ProfessorProfile inactiveProfile = new ProfessorProfile();
+            inactiveProfile.setUser(savedInactive);
+            inactiveProfile.setDepartment("Mathematics");
+            professorProfileRepository.save(inactiveProfile);
+
+            final Long activeId = savedActive.getId();
+            final Long inactiveId = savedInactive.getId();
+
+            var searchResult = professorProfileRepository.search("Mathematics", null, Pageable.unpaged());
+            List<ProfessorProfile> found = searchResult.getContent();
+
+            assertTrue(found.stream().anyMatch(p -> p.getUser().getId().equals(activeId)),
+                    "Active professor should be in search results");
+            assertFalse(found.stream().anyMatch(p -> p.getUser().getId().equals(inactiveId)),
+                    "Inactive professor must NOT appear in search results");
+        }
+    }
+
+    // ========================
+    // Finding P0-3: Auth / Security Endpoint Tests
+    // ========================
+
+    @Nested
+    @DisplayName("Finding P0-3: Auth and Security Endpoints")
+    class AuthAndSecurityTests {
+
+        @Test
+        @DisplayName("Unauthenticated request to /api/auth/me returns 401")
+        void unauthenticatedMeReturns401() throws Exception {
+            mockMvc.perform(get("/api/auth/me"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("Invalid JWT token to /api/auth/me returns 401")
+        void invalidTokenMeReturns401() throws Exception {
+            mockMvc.perform(get("/api/auth/me")
+                            .header("Authorization", "Bearer invalid-token-value"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("Authenticated request to /api/auth/me returns 200 with user data")
+        void authenticatedMeReturns200() throws Exception {
+            User student = createStudent("authtest@test.edu", "ROLL-AUTH");
+            String token = jwtTokenProvider.generateToken(UserPrincipal.from(student));
+
+            mockMvc.perform(get("/api/auth/me")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.email").value("authtest@test.edu"))
+                    .andExpect(jsonPath("$.role").value("STUDENT"));
+        }
+
+        @Test
+        @DisplayName("AuthController me() with null principal throws BadCredentialsException")
+        void authControllerMeNullPrincipalThrows() {
+            assertThrows(BadCredentialsException.class, () -> authController.me(null));
         }
     }
 }
