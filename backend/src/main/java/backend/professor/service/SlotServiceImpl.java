@@ -27,31 +27,36 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import backend.waitlist.service.WaitlistService;
+import org.springframework.context.annotation.Lazy;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class SlotServiceImpl implements SlotService {
 
     private static final Set<SlotStatus> BOOKABLE_STATUSES = Set.of(SlotStatus.OPEN, SlotStatus.FULL);
 
     private final SlotRepository slotRepository;
     private final UserRepository userRepository;
-
-    // Section 16 - Integration Rules: SlotService.getBookingsForSlot() is a
-    // documented exception that reads booking/'s and waitlist/'s
-    // repositories directly, read-only, to assemble the roster response -
-    // the one explicitly carved-out cross-module read in the whole spec
-    // ("both explicitly exposed as read paths").
     private final BookingRepository bookingRepository;
     private final WaitlistEntryRepository waitlistEntryRepository;
-
-    // Section 8.3 grants booking/ read access to StudentProfileRepository
-    // for rollNo display on SlotBookingsResponse; since that response is
-    // actually assembled here in professor/ (its owning module per
-    // Section 10), professor/ needs the same read-only access to satisfy
-    // the exact JSON contract in main spec Section 3.2 ("rollNo" field).
     private final StudentProfileRepository studentProfileRepository;
+    private final WaitlistService waitlistService;
+
+    public SlotServiceImpl(
+            SlotRepository slotRepository,
+            UserRepository userRepository,
+            BookingRepository bookingRepository,
+            WaitlistEntryRepository waitlistEntryRepository,
+            StudentProfileRepository studentProfileRepository,
+            @Lazy WaitlistService waitlistService) {
+        this.slotRepository = slotRepository;
+        this.userRepository = userRepository;
+        this.bookingRepository = bookingRepository;
+        this.waitlistEntryRepository = waitlistEntryRepository;
+        this.studentProfileRepository = studentProfileRepository;
+        this.waitlistService = waitlistService;
+    }
 
     @Override
     @Transactional
@@ -101,9 +106,9 @@ public class SlotServiceImpl implements SlotService {
                 throw new SlotOverlapException(
                         "Slot has active bookings - only capacity may be changed, not date/time");
             }
-            if (request.getCapacity() < slot.getCapacity()) {
+            if (request.getCapacity() < slot.getBookedCount()) {
                 throw new SlotOverlapException(
-                        "Capacity cannot be decreased below the current booked count on a slot with active bookings");
+                        "Capacity cannot be decreased below the current booked count (" + slot.getBookedCount() + ")");
             }
         } else {
             validateTimeOrder(request);
@@ -121,6 +126,7 @@ public class SlotServiceImpl implements SlotService {
             slot.setEndTime(request.getEndTime());
         }
 
+        int oldCapacity = slot.getCapacity();
         slot.setCapacity(request.getCapacity());
 
         // Re-derive OPEN/FULL from the (possibly unchanged) booked count vs
@@ -132,6 +138,13 @@ public class SlotServiceImpl implements SlotService {
         }
 
         Slot saved = slotRepository.save(slot);
+
+        // If capacity was expanded, automatically promote queued waitlist students
+        if (request.getCapacity() > oldCapacity && slot.getStatus() != SlotStatus.CANCELLED && slot.getStatus() != SlotStatus.COMPLETED) {
+            waitlistService.promoteNext(slotId);
+            saved = slotRepository.findById(slotId).orElse(saved);
+        }
+
         return toSlotResponse(saved);
     }
 
