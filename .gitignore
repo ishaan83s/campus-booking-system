@@ -41,5 +41,6 @@ replay_pid*
 
 
 
-.agents/skills
+.agents/
+.agent
 .vscode/
