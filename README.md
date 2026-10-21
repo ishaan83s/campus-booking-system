@@ -120,7 +120,6 @@ pnpm build
 - [Frontend upgrade notes](docs/FRONTEND_UPGRADE.md) — frontend modernization notes.
 - [Frontend code review](docs/FRONTEND_CODE_REVIEW.md) — implementation review and findings.
 - [Frontend fixes](docs/FRONTEND_FIXES.md) — recorded frontend corrections.
-- [Frontend agent stack](docs/FRONTEND_AGENT_STACK.md) — tools and workflow used during frontend work.
 - [Visual QA report](docs/VISUAL_QA.md) — visual inspection notes.
 - [Final frontend QA report](docs/FINAL_FRONTEND_QA.md) — final frontend quality review.
 - [Rehabilitation baseline](docs/REHABILITATION_BASELINE.md) — project baseline and improvement plan.

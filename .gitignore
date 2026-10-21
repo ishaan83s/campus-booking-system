@@ -38,9 +38,20 @@ frontend/dist/
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
-
-
-
-.agents/
-.agent
+# Editor & IDE files
 .vscode/
+
+# AI and agent artifacts
+.agents/
+.agent/
+.agent
+.gemini/
+.cursor/
+.claude/
+.windsurf/
+.continue/
+.aider*
+AGENTS.md
+GEMINI.md
+CLAUDE.md
+docs/FRONTEND_AGENT_STACK.md

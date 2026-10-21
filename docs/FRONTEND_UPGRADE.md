@@ -28,8 +28,6 @@ All 6 skills were installed in both the global Antigravity configuration (`~/.ge
 | **React Best Practices** | `vercel-labs/agent-skills` (`react-best-practices`) | Bundle optimization, waterfall elimination, render performance |
 | **React Composition Patterns** | Architectural standard | Headless primitives, compound components, slot patterns, inversion of control |
 
-Documentation committed in [`docs/FRONTEND_AGENT_STACK.md`](file:///Users/ishaan/college-office-hours-booking-system/docs/FRONTEND_AGENT_STACK.md).
-
 ---
 
 ## Installed Frontend Dependencies
