@@ -1,5 +1,8 @@
 # Campus Booking System
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Online-success.svg)](https://officehour-roan.vercel.app/)
+
 A full-stack office-hours booking platform for a college campus. Students can find and reserve time with professors, professors can publish and manage availability, and administrators can oversee users and booking activity.
 
 ## Live application
