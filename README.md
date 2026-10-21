@@ -1,74 +1,141 @@
 # Campus Booking System
 
-Internal College Office Hours Booking System built using **Spring Boot**, following Clean Architecture principles, REST API design, and a collaborative Git workflow.
+A full-stack office-hours booking platform for a college campus. Students can find and reserve time with professors, professors can publish and manage availability, and administrators can oversee users and booking activity.
 
-## Overview
+## Live application
 
-Campus Booking System lets students book office hours with professors, manages waitlists when slots are full, and gives professors a dashboard to manage their availability  all backed by a JWT-authenticated Spring Boot API.
+[Open the Campus Booking System](https://officehour-roan.vercel.app/)
 
 ## Features
 
-- 🎓 **Student Booking** — browse and book available office hour slots
-- 🧑‍🏫 **Professor Dashboard** — manage availability and view upcoming bookings
-- 🔐 **Authentication** — secure JWT-based login for students and professors
-- ⏳ **Waitlist** — automatic waitlisting and promotion when slots free up
-- ⚖️ **Conflict Resolution** — prevents double-booking and overlapping slots
+- **Role-based accounts** for students, professors, and administrators, with JWT authentication.
+- **Office-hour scheduling:** professors create time slots with a capacity; students browse and book available slots.
+- **Booking management:** students can review and cancel bookings; professors can manage their schedules and see bookings.
+- **Waitlists:** students can join full slots and are promoted when a place becomes available.
+- **Conflict checks** to prevent overlapping slots and overbooking.
+- **Administration:** view system-wide reports, manage accounts, and cancel bookings when needed.
+- **Responsive React interface** with role-specific pages for students, professors, and administrators.
 
-## Tech Stack
+## Technology
 
-**Backend**
-- Java
-- Spring Boot
-- Spring Data JPA
-- Hibernate
-- MySQL
+| Area | Stack |
+| --- | --- |
+| Frontend | React, React Router, Vite, JavaScript, CSS |
+| Backend | Java 17, Spring Boot, Spring Security, Spring Data JPA, Hibernate |
+| Database | MySQL 8 |
+| Authentication | JWT bearer tokens |
+| API testing | Postman collection and guide in `postman/` and `docs/` |
 
-**Frontend**
-- HTML
-- CSS
-- Bootstrap
-- JavaScript
+## Repository layout
 
-## Repository Structure
-
-```
-backend/    # Spring Boot application (REST APIs, business logic, persistence)
-frontend/   # HTML/CSS/JS client
-docs/       # Project documentation (SSOT, architecture notes, specs)
-postman/    # Postman collections for API testing
+```text
+backend/    Spring Boot REST API, domain logic, persistence, and tests
+frontend/   React single-page application
+postman/    Postman collection
+docs/       API guide, design notes, and engineering documentation
 ```
 
-## Getting Started
+## Run locally
 
-### Prerequisites
-- Java 17+
-- Maven
-- MySQL
+### Requirements
 
-### Backend Setup
+- Java 17 or later
+- MySQL 8
+- Node.js and pnpm
+
+Create a MySQL database for the application:
+
+```sql
+CREATE DATABASE office_hours_booking;
+```
+
+### Start the backend
+
+From the repository root, set your database credentials and a private JWT secret in your shell. Keep real credentials out of source control.
+
 ```bash
+export DB_URL='jdbc:mysql://localhost:3306/office_hours_booking?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
+export DB_USERNAME='root'
+export DB_PASSWORD='your-password'
+export APP_JWT_SECRET='replace-with-a-random-secret-at-least-32-bytes-long'
+
 cd backend
-# configure your MySQL connection in application.properties
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
-### Frontend Setup
+The API listens on `http://localhost:8080` by default. The backend reads `PORT` if you need a different port. Hibernate updates the local schema by default; configure the database before starting the application.
+
+### Start the frontend
+
+In another terminal, from the repository root:
+
 ```bash
 cd frontend
-# open index.html in your browser, or serve with a static server
+pnpm install
+pnpm dev
 ```
 
-API collections for testing endpoints are available in the `postman/` directory.
+The Vite development server prints the local URL when it starts. The frontend uses `http://localhost:8080` for the API by default. To point it at another API URL, create `frontend/.env.local`:
 
-## The Team
+```dotenv
+VITE_API_URL=http://localhost:8080
+```
 
-| Member            | Course               | Year |
-|-------------------|----------------------|------|
-| Ishaan Chavan     | Computer Engineering | TE   |
-| Vivaan Chauhan | Computer Engineering | TE   |
-| Hritik Chauhan     | Computer Engineering | TE   |
-| Krish Choudhary  | Computer Engineering | TE   |
+Restart Vite after changing environment variables.
+
+### Accounts
+
+Students and professors can register through the application. Administrator accounts cannot self-register; an administrator must be provisioned in the database for local use. See the [Postman API testing guide](docs/Postman_API_Testing_Guide.md) for the authentication flow and endpoint examples.
+
+## Checks
+
+Run the backend test suite:
+
+```bash
+cd backend
+./mvnw test
+```
+
+Create a production frontend build:
+
+```bash
+cd frontend
+pnpm install
+pnpm build
+```
+
+## Documentation
+
+### API and backend
+
+- [Postman API testing guide](docs/Postman_API_Testing_Guide.md) — authentication workflow, request examples, and response formats.
+- [Backend correctness audit](docs/BACKEND_CORRECTNESS_AUDIT.md) — domain rules, persistence behavior, and backend checks.
+- [Final engineering review](docs/FINAL_ENGINEERING_REVIEW.md) — overall architecture, engineering review, and follow-up notes.
+
+### Product, design, and frontend
+
+- [Design system](docs/DESIGN_SYSTEM.md) — visual tokens and interface conventions.
+- [UX audit](docs/UX_AUDIT.md) — user experience review and findings.
+- [UI ecosystem](docs/UI_ECOSYSTEM.md) — interface structure and component overview.
+- [Frontend upgrade notes](docs/FRONTEND_UPGRADE.md) — frontend modernization notes.
+- [Frontend code review](docs/FRONTEND_CODE_REVIEW.md) — implementation review and findings.
+- [Frontend fixes](docs/FRONTEND_FIXES.md) — recorded frontend corrections.
+- [Frontend agent stack](docs/FRONTEND_AGENT_STACK.md) — tools and workflow used during frontend work.
+- [Visual QA report](docs/VISUAL_QA.md) — visual inspection notes.
+- [Final frontend QA report](docs/FINAL_FRONTEND_QA.md) — final frontend quality review.
+- [Rehabilitation baseline](docs/REHABILITATION_BASELINE.md) — project baseline and improvement plan.
+
+The repository also has placeholder files for [API design](docs/api-design.md), [architecture](docs/architecture.md), [database schema](docs/database-schema.md), and [meeting notes](docs/meeting-notes.md); those files are currently empty.
+
+## Project team
+
+| Name | Program |
+| --- | --- |
+| Ishaan Chavan | Computer Engineering |
+| Vivaan Chauhan | Computer Engineering |
+| Hritik Chauhan | Computer Engineering |
+| Krish Choudhary | Computer Engineering |
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
